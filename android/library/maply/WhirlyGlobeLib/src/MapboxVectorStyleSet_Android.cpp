@@ -40,7 +40,7 @@ void MapboxVectorStyleSetImpl_Android::setupMethods(JNIEnv *env)
     if (!makeLabelInfoMethod)
     {
         jclass thisClass = MapboxVectorStyleSetClassInfo::getClassInfo()->getClass();
-        makeLabelInfoMethod      = env->GetMethodID(thisClass,"labelInfoForFont",  "(Ljava/lang/String;F)Lcom/mousebird/maply/LabelInfo;");
+        makeLabelInfoMethod      = env->GetMethodID(thisClass,"labelInfoForFont",  "([Ljava/lang/String;F)Lcom/mousebird/maply/LabelInfo;");
         calculateTextWidthMethod = env->GetMethodID(thisClass,"calculateTextWidth","(Ljava/lang/String;Lcom/mousebird/maply/LabelInfo;)D");
         makeCircleTextureMethod  = env->GetMethodID(thisClass,"makeCircleTexture", "(DIIFLcom/mousebird/maply/Point2d;)J");
         makeLineTextureMethod    = env->GetMethodID(thisClass,"makeLineTexture",   "([D)J");
@@ -141,7 +141,13 @@ LabelInfoRef MapboxVectorStyleSetImpl_Android::makeLabelInfo(PlatformThreadInfo 
 
     try
     {
-        const auto key = std::make_pair(fontNames[0],fontSize);
+        // We present the labelInfo builder with several font options
+        //  but we don't know which one they picked, so we'll just glom all the names
+        //  together to represent what happened.
+        std::string congName;
+        for (auto fontName: fontNames)
+            congName += fontName + ";";
+        const auto key = std::make_pair(congName,fontSize);
         const auto result = labelInfos.insert(std::make_pair(key, LabelInfoAndroidRef()));
         if (!result.second)
         {
@@ -149,10 +155,11 @@ LabelInfoRef MapboxVectorStyleSetImpl_Android::makeLabelInfo(PlatformThreadInfo 
             return result.first->second;
         }
 
-        jstring jFontNameStr = inst->env->NewStringUTF(fontNames[0].c_str());
-        jobject labelInfo = inst->env->CallObjectMethod(thisObj, makeLabelInfoMethod, jFontNameStr, 2.0 * fontSize);
+        jobjectArray strArray = BuildStringArray(inst->env,fontNames);
+
+        jobject labelInfo = inst->env->CallObjectMethod(thisObj, makeLabelInfoMethod, strArray, 2.0 * fontSize);
         logAndClearJVMException(inst->env, "labelInfoForFont");
-        inst->env->DeleteLocalRef(jFontNameStr);
+        inst->env->DeleteLocalRef(strArray);
 
         if (jobject labelInfoGlobeObj = inst->env->NewGlobalRef(labelInfo))
         {

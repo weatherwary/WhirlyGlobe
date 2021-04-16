@@ -229,7 +229,7 @@ SingleLabelRef MapboxVectorLayerSymbol::setupLabel(PlatformThreadInfo *inst,
     // Break it up into lines, if necessary
     double textMaxWidth = layout.textMaxWidth->valForZoom(tileInfo->ident.level);
     if (textMaxWidth != 0.0)
-        text = breakUpText(inst,text,textMaxWidth * labelInfo->fontPointSize,labelInfo);
+        text = breakUpText(inst,text,textMaxWidth * labelInfo->fontPointSize * layout.globalTextScale,labelInfo);
     
     // Construct the label
     SingleLabelRef label = styleSet->makeSingleLabel(inst,text);

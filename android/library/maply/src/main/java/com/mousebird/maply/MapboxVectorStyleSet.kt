@@ -126,37 +126,50 @@ class MapboxVectorStyleSet : VectorStyleInterface {
 
     // Return a label info
     @Suppress("unused") // called from JNI
-    fun labelInfoForFont(fontName: String, fontSize: Float): LabelInfo {
-        labelInfoMap[SizedTypeface(fontName, fontSize)]?.let { return it }
+    fun labelInfoForFont(fontNames: Array<String>, fontSize: Float): LabelInfo {
+        var typeface: Typeface? = null
+        var foundFontName: String = ""
 
-        // Give the delegate a chance to produce a typeface or modify the name.
-        val typeface = typefaceDelegate?.getTypeface(fontName) ?:
-                typefaceDelegate?.mapTypefaceName(fontName)?.let {
-                    Typeface.create(it, Typeface.NORMAL)
-            } ?: run {
-                // We need to create something directly from the style, so try to do something
-                // reasonable for the style parameter.
-                // todo: would it work better to remove bold, italic, normal, regular, etc., from the name?
-                var style = Typeface.NORMAL
-                if (boldPattern.matcher(fontName).matches()) {
-                    style = style or Typeface.BOLD
-                }
-                if (italicPattern.matcher(fontName).matches()) {
-                    style = style or Typeface.ITALIC
-                }
-                Typeface.create(fontName, style)
+        for (fontName in fontNames) {
+            labelInfoMap[SizedTypeface(fontName, fontSize)]?.let { return it }
+
+            // Give the delegate a chance to produce a typeface or modify the name.
+            typeface = typefaceDelegate?.getTypeface(fontName)
+            if (typeface != null)
+                break
+            val theFontName = typefaceDelegate?.mapTypefaceName(fontName) ?: fontName
+
+            // We need to create something directly from the style, so try to do something
+            // reasonable for the style parameter.
+            // todo: would it work better to remove bold, italic, normal, regular, etc., from the name?
+            var style = Typeface.NORMAL
+            if (boldPattern.matcher(fontName).matches()) {
+                style = style or Typeface.BOLD
             }
+            if (italicPattern.matcher(fontName).matches()) {
+                style = style or Typeface.ITALIC
+            }
+            typeface = Typeface.create(fontName, style)
+
+            if (typeface != null) {
+                foundFontName = fontName
+                break
+            }
+        }
 
         // Add the typeface to the cache map.  If it's already there, a concurrent thread beat
         // us to it; use that result instead for consistent results.
 
         val labelInfo = LabelInfo()
-        labelInfo.typeface = typefaceMap.putIfAbsent(fontName, typeface) ?: typeface
+        if (typeface == null) {
+            typeface = Typeface.DEFAULT;
+        }
+        labelInfo.typeface = typefaceMap.putIfAbsent(foundFontName, typeface) ?: typeface
         labelInfo.setFontSize(fontSize)
-        labelInfo.fontName = fontName
+        labelInfo.fontName = foundFontName
 
         // Same with the size-specific label info
-        return labelInfoMap.putIfAbsent(SizedTypeface(fontName, fontSize), labelInfo) ?: labelInfo
+        return labelInfoMap.putIfAbsent(SizedTypeface(foundFontName, fontSize), labelInfo) ?: labelInfo
     }
 
     // Calculate text width based on the typeface
