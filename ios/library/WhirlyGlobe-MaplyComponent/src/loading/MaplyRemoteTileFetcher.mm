@@ -697,9 +697,9 @@ using namespace WhirlyKit;
         
         TimeInterval fetchStartTile = TimeGetCurrent();
         
-        if (_debugMode)
-            NSLog(@"Started load: %@ priority = %d, importance = %f, group = %d",urlReq.URL.absoluteString,tile->priority,tile->importance,tile->group);
-        
+//        if (_debugMode)
+//            NSLog(@"Started load: %@ priority = %d, importance = %f, group = %d",urlReq.URL.absoluteString,tile->priority,tile->importance,tile->group);
+//
         // Set up the fetch task so we can use it in a couple places
         MaplyRemoteTileFetcher * __weak weakSelf = self;
         tile->task = [session dataTaskWithRequest:urlReq completionHandler:
@@ -773,8 +773,8 @@ using namespace WhirlyKit;
     if (success) {
        int length = [data length];
 
-       if (_debugMode)
-           NSLog(@"Remote return for: %@, %dk",tile->fetchInfo.urlReq.URL.absoluteString,length / 1024);
+//       if (_debugMode)
+//           NSLog(@"Remote return for: %@, %dk",tile->fetchInfo.urlReq.URL.absoluteString,length / 1024);
        if (log)
            [log addRemoteSuccess:tile length:length startTime:fetchStartTile];
 
@@ -792,8 +792,8 @@ using namespace WhirlyKit;
         // Failed.  Sad.  :-{
         allStats.totalFails = allStats.totalFails + 1;
         recentStats.totalFails = recentStats.totalFails + 1;
-        if (_debugMode)
-            NSLog(@"Remote fail for: %@",tile->fetchInfo.urlReq.URL.absoluteString);
+//        if (_debugMode)
+//            NSLog(@"Remote fail for: %@",tile->fetchInfo.urlReq.URL.absoluteString);
         // Build an NSError around the status code
         if (!error) {
             error = [[NSError alloc] initWithDomain:@"MaplyRemoteTileFetcher"
@@ -814,8 +814,8 @@ using namespace WhirlyKit;
     } else {
         tile->task = nil;
         
-        if (_debugMode)
-            NSLog(@"Cache for: %@, %dk",tile->fetchInfo.urlReq.URL.absoluteString,(int)[data length] / 1024);
+//        if (_debugMode)
+//            NSLog(@"Cache for: %@, %dk",tile->fetchInfo.urlReq.URL.absoluteString,(int)[data length] / 1024);
         if (log)
             [log addCache:tile length:[data length]];
         

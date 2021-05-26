@@ -167,6 +167,7 @@ using namespace WhirlyKit;
     
     WhirlyKitMTLView *mtlView = [[WhirlyKitMTLView alloc] initWithDevice:((RenderSetupInfoMTL *) renderMTL->getRenderSetupInfo())->mtlDevice];
     wrapView = mtlView;
+    
     if (_frameInterval <= 0)
         mtlView.preferredFramesPerSecond = 120;
     else {

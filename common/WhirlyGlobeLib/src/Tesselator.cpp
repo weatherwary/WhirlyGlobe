@@ -125,13 +125,6 @@ void TesselateLoops(const std::vector<VectorRing> &loops,VectorTrianglesRef tris
 
     TESStesselator *tess = tessNewTess(&ma);
     
-    TriangulationInfo tessInfo;
-    int totPoints = 0;
-    for (unsigned int ii=0;ii<loops.size();ii++)
-        totPoints += loops[ii].size();
-    tessInfo.pts.reserve(totPoints);
-    tessInfo.newVert = false;
-    
     Point2f org = (loops[0])[0];
     for (unsigned int li=0;li<loops.size();li++)
     {
@@ -156,10 +149,54 @@ void TesselateLoops(const std::vector<VectorRing> &loops,VectorTrianglesRef tris
         tessAddContour(tess, vertexSize, tessRing.data(), stride, (int)tessRing.size() / vertexSize);
         
     }
-    tessTesselate(tess, TESS_WINDING_POSITIVE, TESS_POLYGONS, verticesPerTriangle, vertexSize, 0);
   
-    tessDeleteTess(tess);
+  int result = tessTesselate(tess, TESS_WINDING_ODD, TESS_POLYGONS, verticesPerTriangle, vertexSize, 0);
+  if (!result) {
+    printf("Failed??");
+  }
+
     
+  const float* verts = tessGetVertices(tess);
+  const int* elems = tessGetElements(tess);
+  const int nelems = tessGetElementCount(tess);
+  
+//  for (int i = 0; i < nverts; i++) {
+//    const TESSreal* pos = &verts[i];
+//    tris->pts.push_back(Point3f(pos[0]/PolyScale2+org.x(), pos[1]/PolyScale2+org.y(), 0.0));
+//  }
+  
+      for (int i = 0; i < nelems; i++)
+      {
+        const TESSindex* poly = &elems[i * verticesPerTriangle];
+        VectorTriangles::Triangle triOut;
+        int startPoint = (int)(tris->pts.size());
+        for (int j = 0; j < verticesPerTriangle; j++) {
+          if (poly[j] == TESS_UNDEF) {
+            break;
+          }
+          const TESSreal* pos = &verts[poly[j] * vertexSize];
+          tris->pts.push_back(Point3f(pos[0]/PolyScale2+org.x(), pos[1]/PolyScale2+org.y(), 0.0));
+          triOut.pts[j] = startPoint + j;
+        }
+        
+         //Make sure this is pointed up
+         Point3f pts[3];
+         for (unsigned int jj=0;jj<3;jj++)
+             pts[jj] = tris->pts[triOut.pts[jj]];
+         Vector3f norm = (pts[1]-pts[0]).cross(pts[2]-pts[0]);
+         if (norm.z() >= 0.0)
+         {
+             int tmp = triOut.pts[0];
+             triOut.pts[0] = triOut.pts[2];
+             triOut.pts[2] = tmp;
+         }
+       
+        tris->tris.push_back(triOut);
+      }
+  
+  tessDeleteTess(tess);
+
+  
     // Convert to triangles
     //    printf("  ");
 //    int startPoint = (int)(tris->pts.size());
