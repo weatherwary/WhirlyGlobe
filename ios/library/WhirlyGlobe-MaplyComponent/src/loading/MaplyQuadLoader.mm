@@ -425,8 +425,8 @@ using namespace WhirlyKit;
     QuadTreeIdentifier tileID = loadReturn->loadReturn->ident;
     // Don't actually want this one
     if (!loader->isFrameLoading(tileID,loadReturn->loadReturn->frame)) {
-        if (_debugMode)
-            NSLog(@"MaplyQuadImageLoader: Dropping fetched tile %d: (%d,%d) frame %d",tileID.level,tileID.x,tileID.y,loadReturn->loadReturn->frame->frameIndex);
+//        if (_debugMode)
+//            NSLog(@"MaplyQuadImageLoader: Dropping fetched tile %d: (%d,%d) frame %d",tileID.level,tileID.x,tileID.y,loadReturn->loadReturn->frame->frameIndex);
         return;
     }
     

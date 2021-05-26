@@ -27,6 +27,20 @@
 
 using namespace WhirlyKit;
 
+static const UIFontTextStyle textStyles[] = {
+   UIFontTextStyleTitle1,
+   UIFontTextStyleTitle2,
+   UIFontTextStyleTitle3,
+   UIFontTextStyleLargeTitle,
+   UIFontTextStyleHeadline,
+   UIFontTextStyleSubheadline,
+   UIFontTextStyleBody,
+   UIFontTextStyleCallout,
+   UIFontTextStyleFootnote,
+   UIFontTextStyleCaption1,
+   UIFontTextStyleCaption2,
+ };
+
 @implementation MaplyVectorStyleSettings
 
 - (instancetype)init
@@ -502,8 +516,20 @@ LabelInfoRef MapboxVectorStyleSetImpl_iOS::makeLabelInfo(PlatformThreadInfo *ins
     // Work through the font names until we find one
     for (auto fontName: fontNames) {
         // Let's try just the name
-        NSString *fontNameStr = [NSString stringWithFormat:@"%s",fontName.c_str()];
+      NSString *fontNameStr = [NSString stringWithFormat:@"%s",fontName.c_str()];
+      if ([fontNameStr hasPrefix:@"style:"]) {
+        fontNameStr = [fontNameStr substringFromIndex:6];
+        for (const auto& textStyle : textStyles) {
+          if ([fontNameStr isEqual:textStyle]) {
+            font = [UIFont preferredFontForTextStyle:textStyle];
+            break;
+          }
+        }
+      }
+      if (!font) {
         font = [UIFont fontWithName:fontNameStr size:fontSize];
+      }
+       //[UIFont fontWithName:fontNameStr size:fontSize];
         if (!font) {
             // The font names vary a bit on iOS so we'll try reformatting the name
             NSArray<NSString *> *components = [fontNameStr componentsSeparatedByString:@" "];
