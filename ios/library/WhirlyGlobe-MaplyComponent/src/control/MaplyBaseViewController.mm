@@ -254,7 +254,7 @@ using namespace WhirlyKit;
 // For specific parts we'll call our subclasses
 - (void) loadSetup
 {
-#if !TARGET_OS_SIMULATOR
+#if !TARGET_OS_SIMULATOR && 0
     [self startAnalytics];
 #endif
     

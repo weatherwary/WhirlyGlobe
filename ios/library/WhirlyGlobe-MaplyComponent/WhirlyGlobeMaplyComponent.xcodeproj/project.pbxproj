@@ -988,6 +988,7 @@
 		C490572A265AB9E3001E4A98 /* bucketalloc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C4905728265AB9E3001E4A98 /* bucketalloc.cpp */; };
 		C490572B265AB9E3001E4A98 /* bucketalloc.h in Headers */ = {isa = PBXBuildFile; fileRef = C4905729265AB9E3001E4A98 /* bucketalloc.h */; };
 		C490572D265ABAB8001E4A98 /* glues.h in Headers */ = {isa = PBXBuildFile; fileRef = C490572C265ABAB8001E4A98 /* glues.h */; };
+		C4A4CF352664115F00AA5BC4 /* MaplyScrollDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = C4A4CF342664115F00AA5BC4 /* MaplyScrollDelegate.mm */; };
 		E56DB3D51D6B1B17007000D2 /* SLDStyleSet.h in Headers */ = {isa = PBXBuildFile; fileRef = E56DB3D41D6B1B17007000D2 /* SLDStyleSet.h */; };
 		E56E02A71E11F99500C1DD85 /* GeoJSONSource.h in Headers */ = {isa = PBXBuildFile; fileRef = E56E02A61E11F99500C1DD85 /* GeoJSONSource.h */; };
 		E5D2D6631DE67B1400E02305 /* MaplyLocationTracker.h in Headers */ = {isa = PBXBuildFile; fileRef = E5D2D6621DE67B1400E02305 /* MaplyLocationTracker.h */; };
@@ -1996,6 +1997,8 @@
 		C4905728265AB9E3001E4A98 /* bucketalloc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = bucketalloc.cpp; sourceTree = "<group>"; };
 		C4905729265AB9E3001E4A98 /* bucketalloc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bucketalloc.h; sourceTree = "<group>"; };
 		C490572C265ABAB8001E4A98 /* glues.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = glues.h; path = ../../include/glues.h; sourceTree = "<group>"; };
+		C4A4CF342664115F00AA5BC4 /* MaplyScrollDelegate.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = MaplyScrollDelegate.mm; sourceTree = "<group>"; };
+		C4A4CF362664125E00AA5BC4 /* MaplyScrollDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MaplyScrollDelegate.h; sourceTree = "<group>"; };
 		E56DB3D41D6B1B17007000D2 /* SLDStyleSet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLDStyleSet.h; sourceTree = "<group>"; };
 		E56DB3D71D6B1B5A007000D2 /* SLDStyleSet.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SLDStyleSet.mm; sourceTree = "<group>"; };
 		E56E02A61E11F99500C1DD85 /* GeoJSONSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GeoJSONSource.h; sourceTree = "<group>"; };
@@ -3000,6 +3003,7 @@
 				2BB8A3B721ED43780025DA98 /* GlobeTapDelegate.mm */,
 				2BB8A3B121ED43780025DA98 /* GlobeTapMessage.mm */,
 				2BB8A3B821ED43780025DA98 /* GlobeTiltDelegate.mm */,
+				C4A4CF342664115F00AA5BC4 /* MaplyScrollDelegate.mm */,
 			);
 			path = gestures;
 			sourceTree = "<group>";
@@ -3150,6 +3154,7 @@
 				2BB8A3ED21ED43D10025DA98 /* MaplyTouchCancelAnimationDelegate.h */,
 				2BB8A3EB21ED43D10025DA98 /* MaplyTwoFingerTapDelegate.h */,
 				2BB8A3E321ED43D10025DA98 /* MaplyZoomGestureDelegate.h */,
+				C4A4CF362664125E00AA5BC4 /* MaplyScrollDelegate.h */,
 			);
 			path = gestures;
 			sourceTree = "<group>";
@@ -4867,6 +4872,7 @@
 				2BC3D6DF220B550400CE91D0 /* MaplyVariableTarget.mm in Sources */,
 				3183314F259112BA005FEF70 /* Rhumb.cpp in Sources */,
 				2BE1E7532208ECA700815D9C /* MaplyAnnotation.mm in Sources */,
+				C4A4CF352664115F00AA5BC4 /* MaplyScrollDelegate.mm in Sources */,
 				2B8796D021FFC59D00EF801D /* UIImage+Stuff.mm in Sources */,
 				2BE1E74E2208E8D500815D9C /* MaplyTileSourceNew.mm in Sources */,
 				2BE1E761220A1A2700815D9C /* MaplyShape.mm in Sources */,
