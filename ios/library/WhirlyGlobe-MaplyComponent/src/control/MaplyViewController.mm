@@ -197,6 +197,10 @@ public:
         [self setHints:@{kMaplyRendererLightingMode: @"none"}];
     }
 
+#if TARGET_OS_MACCATALYST
+  _scrollGesture = true;
+#endif
+  
     _pinchGesture = true;
     _rotateGesture = true;
     _doubleTapDragGesture = true;
@@ -263,6 +267,7 @@ public:
     tapDelegate = nil;
     panDelegate = nil;
     pinchDelegate = nil;
+    scrollDelegate = nil;
     rotateDelegate = nil;
     doubleTapDelegate = nil;
     twoFingerTapDelegate = nil;
@@ -382,6 +387,12 @@ public:
     // Wire up the gesture recognizers
     tapDelegate = [MaplyTapDelegate tapDelegateForView:wrapView mapView:mapView.get()];
     panDelegate = [MaplyPanDelegate panDelegateForView:wrapView mapView:mapView.get() useCustomPanRecognizer:nil];
+    if (_scrollGesture)
+    {
+        scrollDelegate = [MaplyScrollDelegate scrollDelegateForView:wrapView mapView:mapView];
+        scrollDelegate.minZoom = mapView->minHeightAboveSurface();
+        scrollDelegate.maxZoom = mapView->maxHeightAboveSurface();
+    }
     if (_pinchGesture)
     {
         pinchDelegate = [MaplyPinchDelegate pinchDelegateForView:wrapView mapView:mapView];
@@ -579,6 +590,27 @@ public:
 - (void)setPanGesture:(bool)enabled
 {
     panDelegate.gestureRecognizer.enabled = enabled;
+}
+
+- (void)setScrollGesture:(bool)scrollGesture
+{
+    _scrollGesture = scrollGesture;
+    if (scrollGesture && !scrollDelegate)
+    {
+        // gesture enabled but no delegate is set, create one.
+        scrollDelegate = [MaplyScrollDelegate scrollDelegateForView:wrapView mapView:mapView];
+        scrollDelegate.minZoom = mapView->minHeightAboveSurface();
+        scrollDelegate.maxZoom = mapView->maxHeightAboveSurface();
+
+    }
+    else if (!scrollGesture && scrollDelegate)
+    {
+        // gesture disabled but a delegate is set, remove it
+        if (scrollDelegate.gestureRecognizer) {
+            [wrapView removeGestureRecognizer:scrollDelegate.gestureRecognizer];
+        }
+        scrollDelegate = nil;
+    }
 }
 
 - (void)setPinchGesture:(bool)pinchGesture

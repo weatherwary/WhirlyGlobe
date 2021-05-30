@@ -24,6 +24,7 @@
 #import "gestures/MaplyTapDelegate.h"
 #import "gestures/MaplyPanDelegate.h"
 #import "gestures/MaplyPinchDelegate.h"
+#import "gestures/MaplyScrollDelegate.h"
 #import "gestures/MaplyRotateDelegate.h"
 #import "gestures/MaplyDoubleTapDelegate.h"
 #import "gestures/MaplyTwoFingerTapDelegate.h"
@@ -48,6 +49,7 @@
     MaplyTapDelegate *tapDelegate;
     MaplyPanDelegate *panDelegate;
     MaplyPinchDelegate *pinchDelegate;
+    MaplyScrollDelegate *scrollDelegate;
     MaplyRotateDelegate *rotateDelegate;
     MaplyDoubleTapDelegate *doubleTapDelegate;
     MaplyTwoFingerTapDelegate *twoFingerTapDelegate;

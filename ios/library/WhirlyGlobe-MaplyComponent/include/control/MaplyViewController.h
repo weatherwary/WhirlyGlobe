@@ -283,6 +283,13 @@ typedef NS_ENUM(NSInteger, MaplyMapType) {
   */
 @property(nonatomic,assign) bool pinchGesture;
 
+/**
+    Turn the pinch (zoom) gesture recognizer on and off
+    
+    On by default.
+  */
+@property(nonatomic,assign) bool scrollGesture;
+
 /** 
     Turn the rotate gesture recognizer on and off
     
