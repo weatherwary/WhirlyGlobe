@@ -82,6 +82,7 @@ using namespace Maply;
             {
               Point3d curLoc = self.mapView->getLoc();
               CGPoint translation = [pan translationInView:pan.view];
+              // Make the translation smaller so that the zooming is smoother 
               double zoomInc = 1.0 + translation.y / 50.0;
               if (zoomInc < 0.0) {
                 zoomInc = -1.0/zoomInc;
@@ -89,7 +90,6 @@ using namespace Maply;
               double newZ = startZ/zoomInc;
               if (self.minZoom >= self.maxZoom || (self.minZoom < newZ && newZ < self.maxZoom))
               {
-                  NSLog(@"start %f, new %f, trans %f", startZ, newZ, translation.y);
                   MapView testMapView(*(self.mapView));
 
                   Point3d newLoc(curLoc.x(), curLoc.y(), newZ);
