@@ -124,6 +124,7 @@ void TesselateLoops(const std::vector<VectorRing> &loops,VectorTrianglesRef tris
     ma.extraVertices = 256; // realloc not provided, allow 256 extra vertic
 
     TESStesselator *tess = tessNewTess(&ma);
+    tessSetOption(tess, TESS_CONSTRAINED_DELAUNAY_TRIANGULATION, 1);
     
     Point2f org = (loops[0])[0];
     for (unsigned int li=0;li<loops.size();li++)
