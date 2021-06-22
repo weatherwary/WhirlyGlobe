@@ -68,6 +68,9 @@ std::vector<DrawableString *> SingleLabel_iOS::generateDrawableStrings(PlatformT
         {
             UIColor *outlineColor = [UIColor colorWithRed:labelInfo->outlineColor.r/255.0 green:labelInfo->outlineColor.g/255.0 blue:labelInfo->outlineColor.b/255.0 alpha:labelInfo->outlineColor.a/255.0];
             UIColor *textColor = [UIColor colorWithRed:labelInfo->textColor.r/255.0 green:labelInfo->textColor.g/255.0 blue:labelInfo->textColor.b/255.0 alpha:labelInfo->textColor.a/255.0];
+          if (infoOverride && infoOverride->hasTextColor) {
+            textColor = [UIColor colorWithRed:infoOverride->textColor.r/255.0 green:infoOverride->textColor.g/255.0 blue:infoOverride->textColor.b/255.0 alpha:infoOverride->textColor.a/255.0];
+          }
             [attrStr addAttribute:kOutlineAttributeSize value:[NSNumber numberWithFloat:labelInfo->outlineSize] range:NSMakeRange(0, strLen)];
             [attrStr addAttribute:kOutlineAttributeColor value:outlineColor range:NSMakeRange(0, strLen)];
             [attrStr addAttribute:NSForegroundColorAttributeName value:textColor range:NSMakeRange(0, strLen)];

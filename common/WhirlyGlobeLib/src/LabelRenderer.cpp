@@ -144,7 +144,7 @@ void LabelRenderer::render(PlatformThreadInfo *threadInfo,
         const float theShadowSize = labelInfo->shadowSize;
 
         // We set this if the color is embedded in the "font"
-        const bool embeddedColor = labelInfo->outlineSize > 0.0 || (label->infoOverride && label->infoOverride->outlineSize > 0.0);
+      const bool embeddedColor = labelInfo->outlineSize > 0.0 || (label->infoOverride && label->infoOverride->outlineSize > 0.0);
 
         // Ask the label to build the strings.  There are OS specific things in there
         // We also need the real line height back (because it's in the font)
@@ -453,7 +453,7 @@ void LabelRenderer::render(PlatformThreadInfo *threadInfo,
                 for (int ss=((theShadowSize > 0.0) ? 0 : 1);ss<2;ss++)
                 {
                     const Point2d soff = (ss == 1) ? Point2d(0,0) : Point2d(theShadowSize,theShadowSize);
-                    const RGBAColor color = (ss == 1) ? (embeddedColor ? RGBAColor::white() : theTextColor) : theShadowColor;
+                  const RGBAColor color = (ss == 1) ? (embeddedColor ? RGBAColor::white() : theTextColor) : theShadowColor;
                     for (const auto &poly : drawStr->glyphPolys)
                     {
                         // Note: Ignoring the desired size in favor of the font size

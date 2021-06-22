@@ -697,8 +697,8 @@ using namespace WhirlyKit;
         
         TimeInterval fetchStartTile = TimeGetCurrent();
         
-//        if (_debugMode)
-//            NSLog(@"Started load: %@ priority = %d, importance = %f, group = %d",urlReq.URL.absoluteString,tile->priority,tile->importance,tile->group);
+        if (_debugMode)
+            NSLog(@"Started load: %@ priority = %d, importance = %f, group = %d",urlReq.URL.absoluteString,tile->priority,tile->importance,tile->group);
 //
         // Set up the fetch task so we can use it in a couple places
         MaplyRemoteTileFetcher * __weak weakSelf = self;
