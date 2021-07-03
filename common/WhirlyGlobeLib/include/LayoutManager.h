@@ -222,11 +222,19 @@ public:
     bool hasChanges();
     
     /// Return the active objects in a form the selection manager can handle
-    void getScreenSpaceObjects(const SelectionManager::PlacementInfo &pInfo,std::vector<ScreenSpaceObjectLocation> &screenSpaceObjs);
+    void getScreenSpaceObjects(const SelectionManager::PlacementInfo &pInfo,
+                               std::vector<ScreenSpaceObjectLocation> &screenSpaceObjs);
     
     /// Add a generator for cluster images
     void addClusterGenerator(PlatformThreadInfo *,ClusterGenerator *clusterGen);
-    
+
+    /// Show lines around layout objects for debugging/troubleshooting
+    bool getShowDebugBoundaries() const { return showDebugBoundaries; }
+    void setShowDebugBoundaries(bool show) {
+        showDebugBoundaries = show;
+        hasUpdates = true;
+    }
+
 protected:
     static bool calcScreenPt(Point2f &objPt,
                              const LayoutObject *layoutObj,
@@ -254,7 +262,6 @@ protected:
                         const Point2f &frameBufferSize,
                         ChangeSet &changes,
                         int priority = 10000000,
-                        float width = 4.0,
                         RGBAColor color = RGBAColor::black());
     
     VectorManagerRef vecManage;
@@ -263,6 +270,8 @@ protected:
     int maxDisplayObjects;
     /// If there were updates since the last layout
     bool hasUpdates;
+    /// Enable drawing layout boundaries
+    bool showDebugBoundaries;
     /// Objects we're controlling the placement for
     LayoutEntrySet layoutObjects;
     /// Drawables created on the last round
