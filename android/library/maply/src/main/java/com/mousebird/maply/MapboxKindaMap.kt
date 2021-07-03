@@ -28,7 +28,6 @@ import androidx.core.net.toFile
 import okhttp3.*
 import java.io.*
 import java.lang.ref.WeakReference
-import java.net.URL
 import kotlin.collections.ArrayList
 
 /**
@@ -61,22 +60,20 @@ open class MapboxKindaMap(
     constructor(styleJSON: String, localMBTilesFile: File, control: BaseController, styleSettings: VectorStyleSettings = defaultStyle()) :
             this(styleJSON, null, sequenceOf(localMBTilesFile), control, styleSettings)
 
-    var styleSheet: MapboxVectorStyleSet? = null
-    var styleSheetImage: MapboxVectorStyleSet? = null
-    var styleSheetVector: MapboxVectorStyleSet? = null
-    var spriteJSON: String? = null
-    var spritePNG: Bitmap? = null
-    var mapboxInterp: MapboxVectorInterpreter? = null
-    var loader: QuadLoaderBase? = null
-    var offlineRender: RenderController? = null
+    var styleSheet: MapboxVectorStyleSet? = null; private set
+    var styleSheetImage: MapboxVectorStyleSet? = null; private set
+    var styleSheetVector: MapboxVectorStyleSet? = null; private set
+    var spriteJSON: String? = null; private set
+    var spritePNG: Bitmap? = null; private set
+    var mapboxInterp: MapboxVectorInterpreter? = null; private set
+    var loader: QuadLoaderBase? = null; private set
+    var offlineRender: RenderController? = null; private set
     var lineScale = 0.0
     var textScale = 0.0
     var markerScale = 0.0
     var maxConcurrentLoad: Int? = null
     var debugMode = false
-
-    // These are run after a successful load of all the style sheet pieces
-    var postLoadRunnables = ArrayList<Runnable>()
+    var running: Boolean = false; private set
 
     /* If set, we build an image/vector hybrid where the polygons go into
      *  the image layer and the linears and points are represented as vectors
@@ -157,8 +154,26 @@ open class MapboxKindaMap(
     var minImportance = 1024.0 * 1024.0
     
     var sampleParams: SamplingParams? = null; private set
-    
-    private val displayMetrics: DisplayMetrics get() =
+
+    // These are run after a successful load of all the style
+    // sheet pieces, or immediately if loading has already finished.
+    fun addPostLoadRunnable(r: Runnable) {
+        synchronized(postLoadRunnables) {
+            if (running) {
+                r.run()
+            } else {
+                postLoadRunnables.add(r)
+            }
+        }
+    }
+
+    fun addErrorRunnable(r: (String,Boolean,Exception?) -> Unit) {
+        synchronized(loadErrorRunnables) {
+            loadErrorRunnables.add(r)
+        }
+    }
+
+    val displayMetrics: DisplayMetrics get() =
         control.get()?.activity?.resources?.displayMetrics ?: Resources.getSystem().displayMetrics
 
     // Information about the sources as we fetch them
@@ -224,7 +239,7 @@ open class MapboxKindaMap(
                 }
             }
         } catch (e: Exception) {
-            Log.w("Maply", "Failed to cache file $e")
+            reportLoadWarning("Failed to cache file '$url'", e)
         }
     }
 
@@ -257,7 +272,7 @@ open class MapboxKindaMap(
                     }
                 }
             } catch (ex: Exception) {
-                Log.e("MapboxKindaMap", "Failed to load cached stylesheet", ex)
+                reportLoadError("Failed to load cached stylesheet", ex)
             }
 
             // Go get the style sheet (this will also handle local)
@@ -266,21 +281,33 @@ open class MapboxKindaMap(
             addTask(task)
             task.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    Log.w("Maply", "Error fetching style sheet",e)
+                    reportLoadError("Error fetching style sheet", e)
                     stop()
                 }
                 @Throws(IOException::class)
                 override fun onResponse(call: Call, response: Response) {
                     response.use {
-                        if (!finished) {
-                            it.body?.use { body ->
-                                val bytes = body.bytes()
-                                if (bytes.isNotEmpty()) {
-                                    styleSheetJSON = String(bytes)
-                                    cacheFile(theStyleURL, bytes)
-                                    processStyleSheet()
-                                }
+                        if (finished) return@use    // already done loading, how?
+                        if (!response.isSuccessful) {
+                            reportLoadError("JSON stylesheet request failed: ${response.code} ${response.message}")
+                            return@use
+                        }
+                        response.body?.use {
+                            // Convert to string, treat empty as null
+                            val s = String(it.bytes())
+                            if (s.isNotEmpty()) s else null
+                        }?.let { json ->
+                            styleSheetJSON = json
+
+                            cacheFile(theStyleURL, json.toByteArray())
+
+                            try {
+                                processStyleSheet()
+                            } catch (ex: Exception) {
+                                reportLoadError("Failed to process JSON stylesheet", ex)
                             }
+                        } ?: run {
+                            reportLoadError("No response for stylesheet JSON request")
                         }
                     }
                     clearTask(task)
@@ -310,7 +337,6 @@ open class MapboxKindaMap(
             }
 
             val url = mapboxURLFor(Uri.parse(source.url))
-
             try {
                 cacheResolve(url)?.let { cacheFile ->
                     val json = readFile(cacheFile)
@@ -320,7 +346,7 @@ open class MapboxKindaMap(
                     }
                 }
             } catch (ex: Exception) {
-                Log.e("MapboxKindaMap", "Failed to load cached stylesheet", ex)
+                reportLoadWarning("Failed to load cached stylesheet", ex)
             }
 
             // Go fetch the TileJSON
@@ -328,23 +354,26 @@ open class MapboxKindaMap(
             addTask(task)
             task.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    Log.w("MapboxKindaMap","Error trying to fetch tileJson",e)
+                    reportLoadError("Error trying to fetch tileJson", e)
                     clearTask(task)
                     stop()
                 }
                 override fun onResponse(call: Call, response: Response) {
                     response.use {
-                        if (!response.isSuccessful) return@use
-                        it.body?.use { body ->
-                            val bytes = body.bytes()
-                            if (bytes.isNotEmpty()) {
-                                // Note: this will include access tokens in the log, use with care
-                                //Log.d("MapboxKindaMap", "Received ${bytes.size} bytes of ${body.contentType()} for $url")
-                                val json = String(bytes)
-                                if (json.isNotEmpty()) {
-                                    processStylesheetJson(source, json)
-                                    cacheFile(Uri.parse(url.toString()), bytes)
-                                }
+                        if (!response.isSuccessful) {
+                            reportLoadError("Tile JSON request failed: ${response.code} ${response.message}")
+                            return@use
+                        }
+                        response.body?.use {
+                            // Convert to string, treat empty as null
+                            val s = String(it.bytes())
+                            if (s.isNotEmpty()) s else null
+                        }?.let { json ->
+                            cacheFile(Uri.parse(url.toString()), json.toByteArray())
+                            try {
+                                processStylesheetJson(source, json)
+                            } catch (ex: Exception) {
+                                reportLoadError("Failed to process tile JSON", ex)
                             }
                         }
                     }
@@ -373,7 +402,7 @@ open class MapboxKindaMap(
                 spriteJSON = readFile(cacheFile)
             }
         } catch (ex: Exception) {
-            Log.e("MapboxKindaMap", "Failed to load cached sprite sheet", ex)
+            reportLoadWarning("Failed to load cached sprite sheet", ex)
         }
 
         if (spriteJSON == null && fetchSprites) {
@@ -381,25 +410,24 @@ open class MapboxKindaMap(
             addTask(task1)
             task1.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    Log.w("Maply", "Error fetching sprite sheet", e)
+                    reportLoadError("Error fetching sprite sheet", e)
                     stop()
                 }
-
                 override fun onResponse(call: Call, response: Response) {
                     response.use {
                         if (finished) return@use
                         if (!response.isSuccessful) {
-                            Log.w("MapboxKindaMap",
-                                "Sprite sheet request failed with ${response.code}: ${response.message}")
+                            reportLoadError("Sprite sheet request failed: ${response.code} ${response.message}")
                             return@use
                         }
-                        it.body?.use { body ->
-                            val bytes = body.bytes()
-                            if (bytes.isNotEmpty()) {
-                                // todo: validate that it's not some kind of error message
-                                spriteJSON = String(bytes)
-                                cacheFile(spriteJSONUrl, bytes)
-                            }
+                        response.body?.use {
+                            // Convert to string, treat empty as null
+                            val s = String(it.bytes())
+                            if (s.isNotEmpty()) s else null
+                        }?.let { json ->
+                            // todo: validate that it's not some kind of error message
+                            cacheFile(spriteJSONUrl, json.toByteArray())
+                            spriteJSON = json
                         }
                     }
                     clearTask(task1)
@@ -416,7 +444,7 @@ open class MapboxKindaMap(
                 }
             }
         } catch (ex: Exception) {
-            Log.e("MapboxKindaMap", "Failed to load cached sprite image", ex)
+            reportLoadWarning("Failed to load cached sprite image", ex)
         }
 
         if (spritePNG == null && fetchSprites) {
@@ -424,35 +452,30 @@ open class MapboxKindaMap(
             addTask(task2)
             task2.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    Log.w("Maply", "Error fetching sprite image", e)
+                    reportLoadError("Error fetching sprite image", e)
                     stop()
                 }
-
                 override fun onResponse(call: Call, response: Response) {
                     response.use {
                         if (finished) return@use
                         if (!response.isSuccessful) {
-                            Log.w("MapboxKindaMap",
-                                "Sprite PNG request failed with ${response.code}: ${response.message}")
+                            reportLoadError("Sprite image request failed with ${response.code}: ${response.message}")
                             return@use
                         }
-                        it.body?.use { body ->
-                            val bytes = body.bytes()
-                            if (bytes.isNotEmpty()) {
-                                spritePNG =
-                                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                                if (spritePNG != null) {
+                        spritePNG = response.body?.use { body ->
+                            try {
+                                val bytes = body.bytes()
+                                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.also {
+                                    // Parsed as an image, cache it
                                     cacheFile(spritePNGUrl, bytes)
-                                } else {
-                                    // Probably some error HTML/JSON instead
-                                    val msg: String = kotlin.runCatching {
-                                        String(bytes, Charsets.UTF_8).let { s ->
-                                            if (s.length > 100) s.substring(0,100) else s
-                                        }
-                                    }.getOrDefault("?")
-                                    Log.w("MapboxKindaMap", "Failed to read sprite PNG ($msg)")
                                 }
+                            } catch (ex: Exception) {
+                                reportLoadError("Invalid sprite image response")
+                                null
                             }
+                        } ?: run {
+                            reportLoadError("Empty sprite image response")
+                            null
                         }
                     }
                     clearTask(task2)
@@ -508,7 +531,7 @@ open class MapboxKindaMap(
 
         // Sources probably weren't set up
         if (minZoom > maxZoom) {
-            Log.w("Maply", "Sources missing.  Bad zoom min/max.")
+            reportLoadError("Sources missing.  Bad zoom min/max.")
             return
         }
 
@@ -575,25 +598,38 @@ open class MapboxKindaMap(
             parseFromJSON(styleSheetJSON)
         }
 
-        styleSheetVector = MapboxVectorStyleSet(vectorStyleDict, styleSettings, displayMetrics, control)
+        val styleSet = MapboxVectorStyleSet(vectorStyleDict, styleSettings, displayMetrics, control)
+        styleSheetVector = styleSet
 
         // Set up the sprite sheet
         if (spriteJSON != null && spritePNG != null) {
             styleSheetVector?.addSprites(spriteJSON!!,spritePNG!!)
         }
 
-        // Called after we've parsed the style sheet (again)
-        postLoadRunnables.forEach {
-            it.run()
+        synchronized(this) {
+            if (stopping) {
+                return
+            }
+            mapboxInterp = MapboxVectorInterpreter(styleSet, control)
+            loader = QuadPagingLoader(sampleParams, tileInfos.toTypedArray(), mapboxInterp, control).also {
+                it.flipY = false
+                if (localFetchers.isNotEmpty()) {
+                    it.setTileFetcher(localFetchers[0])
+                }
+                it.debugMode = debugMode
+            }
         }
 
-        mapboxInterp = MapboxVectorInterpreter(styleSheetVector, control)
-        loader = QuadPagingLoader(sampleParams, tileInfos.toTypedArray(), mapboxInterp, control).also {
-            it.flipY = false
-            if (localFetchers.isNotEmpty()) {
-                it.setTileFetcher(localFetchers[0])
+        // Called after we've parsed the style sheet (again)
+        synchronized(postLoadRunnables) {
+            try {
+                running = true
+                postLoadRunnables.toTypedArray() // copy
+            } finally {
+                postLoadRunnables.clear()
             }
-            it.debugMode = debugMode
+        }.forEach {
+            it.run()
         }
      }
 
@@ -621,46 +657,43 @@ open class MapboxKindaMap(
             }
         }
 
-        if (styleSheetJSON == null)
+        if (styleSheetJSON == null || stopping)
             return
 
         if (backgroundAllPolys) {
-            // Set up an offline renderer and a Mapbox vector style handler to render to it
-            val imageSizeWidth = 512
-            val imageSizeHeight = 512
-            val offlineRender = RenderController(control.renderControl, imageSizeWidth,imageSizeHeight)
-            this.offlineRender = offlineRender
-            val imageStyleSettings = VectorStyleSettings()
-            imageStyleSettings.baseDrawPriority = styleSettings.baseDrawPriority
-            // TODO: Do we need this?
-//                imageStyleSettings.arealShaderName = kMaplyShaderDefaultTriNoLighting
-
-            // We only want the polygons in the image
-            val imageStyleDict = AttrDictionary()
-            imageStyleDict.parseFromJSON(styleSheetJSON)
-            val imageLayers =  imageStyleDict.getArray("layers")
-            val newImageLayers = ArrayList<AttrDictionaryEntry>()
-            for (layer in imageLayers) {
-                if (layer.type == AttrDictionaryEntry.Type.DictTypeDictionary) {
-                    val layerDict = layer.dict
-                    val type = layerDict.getString("type")
-                    if (type != null && (type == "background" || type == "fill"))
-                        newImageLayers.add(layer)
+            synchronized(this) {
+                if (stopping) {
+                    return
                 }
-            }
-            imageStyleDict.setArray("layers",newImageLayers.toTypedArray())
-            styleSheetImage = MapboxVectorStyleSet(imageStyleDict, styleSettings, displayMetrics, offlineRender).also {
-                offlineRender.setClearColor(it.backgroundColorForZoom(0.0))
+
+                // Set up an offline renderer and a Mapbox vector style handler to render to it
+                val imageSize = 512
+                offlineRender = RenderController(control.renderControl, imageSize, imageSize)
+                val imageStyleSettings = VectorStyleSettings()
+                imageStyleSettings.baseDrawPriority = styleSettings.baseDrawPriority
+    
+                // We only want the polygons in the image
+                val imageStyleDict = AttrDictionary()
+                imageStyleDict.parseFromJSON(styleSheetJSON)
+                val imageLayers = imageStyleDict.getArray("layers")
+                val newImageLayers = ArrayList<AttrDictionaryEntry>()
+                for (layer in imageLayers) {
+                    if (layer.type == AttrDictionaryEntry.Type.DictTypeDictionary) {
+                        val layerDict = layer.dict
+                        val type = layerDict.getString("type")
+                        if (type != null && (type == "background" || type == "fill"))
+                            newImageLayers.add(layer)
+                    }
+                }
+                imageStyleDict.setArray("layers", newImageLayers.toTypedArray())
+                styleSheetImage = MapboxVectorStyleSet(imageStyleDict, styleSettings, displayMetrics, offlineRender!!).also {
+                    offlineRender!!.setClearColor(it.backgroundColorForZoom(0.0))
+                }
             }
         }
 
         val vectorStyleDict = AttrDictionary()
         vectorStyleDict.parseFromJSON(styleSheetJSON)
-
-        // Called after we've parsed the style sheet (again)
-        postLoadRunnables.forEach {
-            it.run()
-        }
 
         // The polygons only go into the background in this case
         if (backgroundAllPolys) {
@@ -676,46 +709,91 @@ open class MapboxKindaMap(
             }
             vectorStyleDict.setArray("layers", newVectorLayers.toTypedArray())
         }
-        styleSheetVector = MapboxVectorStyleSet(vectorStyleDict, styleSettings, displayMetrics, control)
+
+        val vecStyle = MapboxVectorStyleSet(vectorStyleDict, styleSettings, displayMetrics, control)
+        val imgStyle = styleSheetImage
+        styleSheetVector = vecStyle
 
         // Set up the sprite sheet
         if (spriteJSON != null && spritePNG != null) {
             styleSheetVector?.addSprites(spriteJSON!!,spritePNG!!)
         }
-
-        mapboxInterp = if (offlineRender != null && styleSheetImage != null) {
-            MapboxVectorInterpreter(styleSheetImage, offlineRender, styleSheetVector, control)
-        } else {
-            MapboxVectorInterpreter(styleSheetVector, control)
+        
+        synchronized(this) {
+            if (stopping) {
+                return
+            }
+            mapboxInterp = if (offlineRender != null && imgStyle != null) {
+                MapboxVectorInterpreter(imgStyle, offlineRender!!, vecStyle, control)
+            } else {
+                MapboxVectorInterpreter(vecStyle, control)
+            }
         }
 
         if (mapboxInterp == null) {
-            Log.w("Maply", "Failed to set up Mapbox interpreter.  Nothing will appear.")
+            reportLoadError("Failed to set up Mapbox interpreter", null)
             stop()
         }
-
-        loader = QuadImageLoader(sampleParams, tileInfos.toTypedArray(), control, QuadLoaderBase.Mode.SingleFrame).apply {
-            setBaseDrawPriority(styleSettings.baseDrawPriority)
-            setDrawPriorityPerLevel(styleSettings.drawPriorityPerLevel)
-            setLoaderInterpreter(mapboxInterp)
-            setTileFetcher(localFetchers.firstOrNull() ?:
-                RemoteTileFetcher(control,"Remote Tile Fetcher").apply {
+    
+        synchronized(this) {
+            if (stopping) {
+                return
+            }
+            loader = QuadImageLoader(sampleParams, tileInfos.toTypedArray(),
+                    control, QuadLoaderBase.Mode.SingleFrame).apply {
+                setBaseDrawPriority(styleSettings.baseDrawPriority)
+                setDrawPriorityPerLevel(styleSettings.drawPriorityPerLevel)
+                setLoaderInterpreter(mapboxInterp)
+                setTileFetcher(localFetchers.firstOrNull() ?: RemoteTileFetcher(control, "Remote Tile Fetcher").apply {
                     debugMode = this@MapboxKindaMap.debugMode
                 })
-            debugMode = this@MapboxKindaMap.debugMode
+                debugMode = this@MapboxKindaMap.debugMode
+            }
+        }
+
+        synchronized(postLoadRunnables) {
+            try {
+                running = true
+                postLoadRunnables.toTypedArray() // copy
+            } finally {
+                postLoadRunnables.clear()
+            }
+        }.forEach {
+            it.run()
+        }
+    }
+
+    private fun reportLoadWarning(desc: String, ex: Exception? = null) = reportLoadError(desc, ex, false)
+    private fun reportLoadError(desc: String, ex: Exception? = null) = reportLoadError(desc, ex, true)
+    private fun reportLoadError(desc: String, ex: Exception?, fatal: Boolean) {
+        Log.e("MapboxKindaMap", desc, ex)
+        synchronized(loadErrorRunnables) {
+            loadErrorRunnables.toTypedArray()
+        }.forEach {
+            it.invoke(desc, fatal, ex)
         }
     }
 
     // Stop trying to load data if we're doing that
     //  or shutdown the loader if we've gotten to that point
     fun stop() {
+        synchronized(this) {
+            stopping = true
+            running = false
+        }
+
         val theControl = control.get() ?: return
     
         // Gotta run on the main thread
         if (Looper.getMainLooper().thread != Thread.currentThread()) {
-            theControl.activity?.runOnUiThread { stop() }
-
-            return
+            val activity = theControl.activity;
+            if (activity != null) {
+                activity.runOnUiThread {
+                    stop()
+                }
+                return
+            }
+            Log.w("Maply", "No activity, shutting down on calling thread");
         }
 
         outstandingFetches.forEach {
@@ -723,18 +801,17 @@ open class MapboxKindaMap(
         }
         outstandingFetches.clear()
 
-        styleSheet?.shutdown()
-        styleSheetVector?.shutdown()
-        styleSheetImage?.shutdown()
-
         loader?.shutdown()
         loader = null
         mapboxInterp = null
 
-        offlineRender?.apply {
-            shutdown()
-        }
-
+        offlineRender?.shutdown()
+        offlineRender = null;
+    
+        styleSheet?.shutdown()
+        styleSheetVector?.shutdown()
+        styleSheetImage?.shutdown()
+        
         control.clear()
     }
 
@@ -753,6 +830,11 @@ open class MapboxKindaMap(
     // Equals and Ampersand are valid, but get escaped by URI, and so tend to cause trouble.
     private val cacheNamePattern = Regex("[|?*<\":%@>+\\[\\]\\\\/=&]")
     private var finished = false
+    
+    private var stopping = false
+
+    private val postLoadRunnables = ArrayList<Runnable>()
+    private val loadErrorRunnables = ArrayList<(String,Boolean,Exception?) -> Unit>()
 
     init {
         val metrics = displayMetrics

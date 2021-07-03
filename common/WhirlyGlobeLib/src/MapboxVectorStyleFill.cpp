@@ -102,6 +102,10 @@ void MapboxVectorLayerFill::buildObjects(PlatformThreadInfo *inst,
     {
         if (vecObj->getVectorType() == VectorArealType)
         {
+            if (shapes.empty())
+            {
+                shapes.reserve(vecObjs.size() * 20);
+            }
             std::copy(vecObj->shapes.begin(),vecObj->shapes.end(),std::back_inserter(shapes));
         }
     }
@@ -111,6 +115,7 @@ void MapboxVectorLayerFill::buildObjects(PlatformThreadInfo *inst,
     {
         // tessellate the area features
         std::vector<VectorShapeRef> tessShapes;
+        tessShapes.reserve(shapes.size());
         for (const auto &it : shapes)
         {
             if (cancelFn(inst))
@@ -129,9 +134,13 @@ void MapboxVectorLayerFill::buildObjects(PlatformThreadInfo *inst,
 
         MBResolveColorType resolveMode = MBResolveColorOpacityComposeAlpha;
 #ifdef __ANDROID__
-        // On Android we need to run the math later, so don't premultiply
-        if (!paint.color->isExpression() && !paint.opacity->isExpression())
+        // On Android, pre-multiply the alpha on static colors.
+        // When the color or opacity is dynamic, we need to do it in the tweaker.
+        if ((!paint.color || !paint.color->isExpression()) &&
+            (!paint.opacity || !paint.opacity->isExpression()))
+        {
             resolveMode = MBResolveColorOpacityMultiply;
+        }
 #endif
         if (const auto color = styleSet->resolveColor(paint.color, paint.opacity, tileInfo->ident.level, resolveMode))
         {
@@ -151,7 +160,7 @@ void MapboxVectorLayerFill::buildObjects(PlatformThreadInfo *inst,
             // TODO: Switch to stencils
 //            vecInfo.drawOrder = tileInfo->tileNumber();
 
-//            wkLogLevel(Debug, "fill: tildID = %d: (%d,%d)  drawOrder = %d, drawPriority = %d",tileInfo->ident.level, tileInfo->ident.x, tileInfo->ident.y, vecInfo.drawOrder,vecInfo.drawPriority);
+//            wkLogLevel(Debug, "fill: tileID = %d: (%d,%d)  drawOrder = %d, drawPriority = %d",tileInfo->ident.level, tileInfo->ident.x, tileInfo->ident.y, vecInfo.drawOrder,vecInfo.drawPriority);
 
             if (minzoom != 0 || maxzoom < 1000)
             {

@@ -47,8 +47,8 @@ import javax.microedition.khronos.egl.EGLSurface;
 public class LayerThread extends HandlerThread implements View.ViewWatcher
 {
 	boolean valid = true;
-	public View view = null;
-	public Scene scene = null;
+	final public View view;
+	final public Scene scene;
 	public RenderController renderer = null;
 	final ReentrantLock startLock = new ReentrantLock();
 	final ArrayList<Layer> layers = new ArrayList<>();
@@ -87,7 +87,7 @@ public class LayerThread extends HandlerThread implements View.ViewWatcher
 	}
 
 	// If set, this is a full layer thread.  If not, it just has the context
-	protected boolean viewUpdates = true;
+	protected boolean viewUpdates;
 	
 	/**
 	 * Construct a layer thread.  You should not be doing this directly.  Layer threads are
@@ -110,15 +110,35 @@ public class LayerThread extends HandlerThread implements View.ViewWatcher
 
 			// This starts the thread, then we immediately block waiting for the renderer
 			// The renderer is created at a later time and handed to us
-			startLock.lock();
+			try {
+				startLock.lockInterruptibly();
+			} catch (InterruptedException ignored) {
+				return;
+			}
 			start();
 			addTask(() -> {
-				startLock.lock();
-				startLock.unlock();
+				if (isShuttingDown) {
+					return;
+				}
+
+				// Wait for a renderer to be set
+				try {
+					startLock.lockInterruptibly();
+				} catch (InterruptedException ignored) {
+					return;
+				}
+				try {
+					startLock.unlock();
+				} catch (IllegalMonitorStateException ignored) {
+				}
+
+				if (isShuttingDown) {
+					return;
+				}
 
 				try {
 					final EGL10 egl = (EGL10) EGLContext.getEGL();
-					if (context != null && surface != null)
+					if (context != null && surface != null && renderer != null)
 						if (!egl.eglMakeCurrent(renderer.display, surface, surface, context)) {
 							Log.d("Maply", "Failed to make current context in layer thread.");
 							renderer.dumpFailureInfo("LayerThread Setup");
@@ -148,6 +168,10 @@ public class LayerThread extends HandlerThread implements View.ViewWatcher
 	// Setting the renderer kicks off activity
 	void setRenderer(RenderController inRenderer)
 	{
+		if (isShuttingDown || inRenderer == null) {
+			return;
+		}
+
 		renderer = inRenderer;
 		
 		final EGL10 egl = (EGL10) EGLContext.getEGL();
@@ -171,14 +195,23 @@ public class LayerThread extends HandlerThread implements View.ViewWatcher
 			// This will release the very first task which sets the right context
 			Handler handler = new Handler(Looper.getMainLooper());
 			handler.post(() -> {
-				startLock.unlock();
-				viewUpdated(view);
+				try {
+					startLock.unlock();
+				} catch (IllegalMonitorStateException ignored) {
+					return;
+				}
+				if (!isShuttingDown) {
+					viewUpdated(view);
+				}
 			});
 		} else {
 			addTask(() -> {
+				if (isShuttingDown) {
+					return;
+				}
 				try {
 					final EGL10 egl1 = (EGL10) EGLContext.getEGL();
-					if (context != null && surface != null) {
+					if (context != null && surface != null && renderer != null) {
 						if (!egl1.eglMakeCurrent(renderer.display, surface, surface, context)) {
 							Log.e("Maply", "Failed to make EGL context in layer thread: " +
 									Integer.toHexString(egl1.eglGetError()));
@@ -213,27 +246,38 @@ public class LayerThread extends HandlerThread implements View.ViewWatcher
 	private final Semaphore workLock = new Semaphore(1, true);
 	private int numActiveWorkers = 0;
 
-	// Something is requesting a lock on shutting down while working
+	/**
+	 * Something is requesting a lock on shutting down while working
+	 *
+	 * @return True if the work was started and can proceed, and <c>endOfWork</c> *must* be called.
+	 *         False if the work should be canceled, and <c>endOfWork</c> must *not* be called.
+	 */
 	public boolean startOfWork()
 	{
-		if (isShuttingDown)
+		if (isShuttingDown) {
 			return false;
+		}
 
 		try {
 			workLock.acquire();
-			// Check it again
-			if (isShuttingDown) {
-				workLock.release();
-				return false;
-			}
-			numActiveWorkers = numActiveWorkers + 1;
-		}
-		catch (Exception exp) {
+		} catch (Exception ignored) {
 			return false;
 		}
 
-		workLock.release();
-		return true;
+		try {
+			// Check it again now that we might have waited for a while
+			if (!isShuttingDown) {
+				numActiveWorkers = numActiveWorkers + 1;
+				return true;
+			}
+		} finally {
+			try {
+				workLock.release();
+			} catch (Exception ignored) {
+			}
+		}
+
+		return false;
 	}
 
 	// End of an external work block.  Safe to shut down.
@@ -242,6 +286,11 @@ public class LayerThread extends HandlerThread implements View.ViewWatcher
 		try {
 			workLock.acquire();
 			numActiveWorkers = numActiveWorkers - 1;
+			if (numActiveWorkers < 0) {
+				// If you see this, it probably means you called `startOfWork` and didn't
+				// check the result.  If it returns false, you must not call `endOfWork`.
+				Log.e("Maply", "Unbalanced endOfWork");
+			}
 			workLock.release();
 		}
 		catch (Exception ignored) {
@@ -253,73 +302,121 @@ public class LayerThread extends HandlerThread implements View.ViewWatcher
 	{
 //		Log.d("Maply", "LayerThread.shutdown()");
 
+		// Create with zero permits, must be released before the first acquire can occur
 		final Semaphore endLock = new Semaphore(0, true);
+		final Semaphore beginLock = new Semaphore(0);
 		isShuttingDown = true;
+
+		// If we're shut down before a renderer is set, the the lambda in
+		// the constructor will never be unblocked, so wake it up now.
+		try {
+			if (startLock.isLocked()) {
+				startLock.unlock();
+			}
+		} catch (IllegalMonitorStateException ignored) {
+			return;
+		}
 
 		// Wait for anything outstanding to finish before we shut down
 		try {
+			final long t0 = System.nanoTime();
 			do {
 				workLock.acquire();
-				if (numActiveWorkers == 0) {
+				if (numActiveWorkers <= 0) {
 					workLock.release();
 					break;
 				}
 				workLock.release();
+				if (System.nanoTime() - t0 > 2L * 1000L * 1000L * 1000L) {
+					Log.w("Maply", "LayerThread timed out waiting for workers");
+					break;
+				}
+				//noinspection BusyWait
 				sleep(10);
 			} while (true);
-		}
-		catch (Exception exp) {
+		} catch (InterruptedException ignored) {
+			// we took too long
+			Log.w("Maply", "LayerThread interrupted while waiting for workers");
+		} catch (Exception exp) {
 			// Not sure why this would ever happen
+			Log.w("Maply", "LayerThread exception while waiting for workers", exp);
 		}
 
-		for (final Layer layer : layers)
-			layer.isShuttingDown = true;
+		synchronized (layers) {
+			for (final Layer layer : layers) {
+				layer.isShuttingDown = true;
+			}
+		}
 
 		// Run the shutdowns on the thread itself
 		addTask(() -> {
-			final EGL10 egl = (EGL10) EGLContext.getEGL();
-
-			final ArrayList<Layer> layersToRemove;
-			synchronized (layers) {
-				layersToRemove = new ArrayList<>(layers);
-			}
-			for (final Layer layer : layersToRemove) {
-				layer.shutdown();
-			}
-
-			valid = false;
-
-			// Stop any pending updates
-			final Handler trailHandle = trailingHandle;
-			final Runnable trailRun = trailingRun;
-			if (trailHandle != null && trailRun != null)
-			{
-				trailHandle.removeCallbacks(trailRun);
-				trailingHandle = null;
-				trailingRun = null;
-			}
-
 			try {
-				egl.eglMakeCurrent(renderer.display, egl.EGL_NO_SURFACE, egl.EGL_NO_SURFACE, egl.EGL_NO_CONTEXT);
-			} catch (Exception ignored) {
-			}
+				beginLock.release();
 
-			layers.clear();
-			endLock.release();
+				final EGL10 egl = (EGL10) EGLContext.getEGL();
+
+				final ArrayList<Layer> layersToRemove;
+				synchronized (layers) {
+					layersToRemove = new ArrayList<>(layers);
+					layers.clear();
+				}
+				for (final Layer layer : layersToRemove) {
+					// Don't let an error in one layer's shutdown prevent the others from being called
+					try {
+						layer.shutdown();
+					} catch (Exception ex) {
+						Log.w("Maply", "Layer shutdown error", ex);
+					}
+				}
+
+				valid = false;
+
+				// Stop any pending updates
+				final Handler trailHandle = trailingHandle;
+				final Runnable trailRun = trailingRun;
+				if (trailHandle != null && trailRun != null) {
+					trailHandle.removeCallbacks(trailRun);
+					trailingHandle = null;
+					trailingRun = null;
+				}
+
+				if (renderer != null) {
+					egl.eglMakeCurrent(renderer.display, egl.EGL_NO_SURFACE, egl.EGL_NO_SURFACE, egl.EGL_NO_CONTEXT);
+				}
+			} catch (Exception ex) {
+				Log.w("Maply", "LayerThread shutdown error", ex);
+			} finally {
+				endLock.release();
+			}
 
 			try {
 				quit();
 			} catch (Exception ignored) {
 			}
-		}, true);
+		}, true, false);	// don't wrap with startOfWork/endOfWork
 
 		// Block until the queue drains
 		if (renderer != null) {
 			try {
+				// Wait for the shutdown task to start.  If this takes a while, it's not our fault,
+				// something else is going on, so we don't want it to count against our timeout.
+				if (!beginLock.tryAcquire(2000, TimeUnit.MILLISECONDS)) {
+					Log.w("Maply", "LayerThread didn't start stopping within 2s");
+				}
 				if (!endLock.tryAcquire(500, TimeUnit.MILLISECONDS)) {
 					Log.w("Maply", "LayerThread didn't stop within 500ms");
+
+					// If the thread is blocked, wake it up and try again
+					try {
+						interrupt();
+					} catch (SecurityException ignored) {
+					}
+					if (!endLock.tryAcquire(100, TimeUnit.MILLISECONDS)) {
+						Log.w("Maply", "LayerThread didn't stop after interrupt");
+					}
 				}
-			} catch (Exception ignored) {
+			} catch (Exception ex) {
+				Log.w("Maply", "LayerThread error waiting for shutdown", ex);
 			}
 		}
 
@@ -336,8 +433,6 @@ public class LayerThread extends HandlerThread implements View.ViewWatcher
 			context = null;
 		}
 
-		view = null;
-		scene = null;
 		renderer = null;
 		context = null;
 		surface = null;
@@ -371,7 +466,7 @@ public class LayerThread extends HandlerThread implements View.ViewWatcher
 	}
 	
 	protected ChangeSet changes = new ChangeSet();
-	Handler changeHandler = null;
+	private Handler changeHandler = null;
 
 	/**
 	 * Add a set of change requests to the scene.
@@ -392,34 +487,35 @@ public class LayerThread extends HandlerThread implements View.ViewWatcher
 		{
 			changes.merge(newChanges);
 			newChanges.dispose();
-			// Schedule a merge with the scene
-			if (changeHandler == null)
-			{
-				changeHandler = addTask(new Runnable()
-				{
-					@Override
-					public void run()
-					{
-						if (isShuttingDown)
-							return;
 
-						// Do a pre-scene flush callback on the layers
-						for (Layer layer : layers)
-							layer.preSceneFlush(layerThread);
-
-						// Now merge in the changes
-						synchronized (this) {
-							changeHandler = null;
-							if (scene != null) {
-								changes.process(renderer, scene);
-								changes.dispose();
-
-								changes = new ChangeSet();
-							}
-						}
-					}
-				},true);
+			if (changeHandler != null) {
+				// already scheduled
+				return;
 			}
+
+			// Schedule a merge with the scene
+			changeHandler = addTask(() -> {
+				if (isShuttingDown)
+					return;
+
+				// Do a pre-scene flush callback on the layers
+				synchronized (layers) {
+					for (Layer layer : layers) {
+						layer.preSceneFlush(layerThread);
+					}
+				}
+
+				// Now merge in the changes
+				synchronized (this) {
+					changeHandler = null;
+					if (scene != null) {
+						changes.process(renderer, scene);
+						changes.dispose();
+
+						changes = new ChangeSet();
+					}
+				}
+			},true);
 		}
 	}
 
@@ -443,12 +539,12 @@ public class LayerThread extends HandlerThread implements View.ViewWatcher
 	 */
 	public Handler addDelayedTask(Runnable run,long time)
 	{
-		if (!valid)
-			return null;
-
-		Handler handler = new Handler(getLooper());
-		handler.postDelayed(run, time);
-		return handler;
+		if (valid && run != null) {
+			Handler handler = new Handler(getLooper());
+			handler.postDelayed(() -> runWorkRunnable(run, true), time);
+			return handler;
+		}
+		return null;
 	}
 
 	/**
@@ -461,28 +557,63 @@ public class LayerThread extends HandlerThread implements View.ViewWatcher
 	 * @return Returns a Handler if you want to cancel the task later.  Returns null if
 	 * we were on the layer thread and no Handler was needed.
 	 */
-	public Handler addTask(Runnable run,boolean wait)
-	{
-		if (!valid)
-			return null;
+	public Handler addTask(Runnable run,boolean wait) {
+		return addTask(run,wait,true);
+	}
 
-		if (!wait && Looper.myLooper() == getLooper())
-			run.run();
-		else {
-			Handler handler = new Handler(getLooper());
-			handler.post(run);
-			return handler;
+	/**
+	 * Add a Runnable to this thread's queue.  It will be executed at some point in the future.
+	 *
+	 * @param run Runnable to run
+	 * @param wait If true we'll always put the Runnable in the queue.  If false we'll see
+	 *             if we're already on the layer thread and just execute the runnable instead.
+	 * @param unitOfWork If true, the runnable will be bracketed with
+	 *                   <c>startOfWork</c> and <c>endOfWork</c> calls
+	 * @return Returns a Handler if you want to cancel the task later.  Returns null if
+	 * we were on the layer thread and no Handler was needed.
+	 */
+	public Handler addTask(Runnable run,boolean wait,boolean unitOfWork) {
+		if (valid && run != null) {
+			if (!wait && Looper.myLooper() == getLooper()) {
+				runWorkRunnable(run, false);
+			} else {
+				Handler handler = new Handler(getLooper());
+				handler.post(unitOfWork ? () -> runWorkRunnable(run, true) : run);
+				return handler;
+			}
 		}
-		
 		return null;
+	}
+
+	/**
+	 * Run the given runnable, wrapping it in a startOfWork/endOfWork region.
+	 *
+	 * @param work The work to do
+	 * @param trap Trap any exceptions
+	 */
+	private void runWorkRunnable(Runnable work, boolean trap) {
+		if (!startOfWork()) {
+			return;
+		}
+		try {
+			work.run();
+		} catch (Exception ex) {
+			if (trap) {
+				Log.e("Maply", "Exception in LayerThread task", ex);
+				return;
+			}
+			throw ex;
+		} finally {
+			endOfWork();
+		}
 	}
 
 	// Used to track a view watcher
 	static class ViewWatcher
 	{
 		public ViewWatcherInterface watcher;
-		public float minTime = 0.1f;
-		public float maxLagTime = 10.f;
+		public float minTime;
+		public float maxLagTime;
 		
 		public ViewWatcher(ViewWatcherInterface inWatcher)
 		{
@@ -587,9 +718,8 @@ public class LayerThread extends HandlerThread implements View.ViewWatcher
 				public void run()
 				{
 					if (valid) {
-						final View theView = view;
 						final RenderController theRenderer = renderer;
-						if (theView != null && theRenderer != null) {
+						if (view != null && theRenderer != null) {
 							final ViewState viewState = view.makeViewState(theRenderer);
 							if (viewState != null) {
 								updateWatchers(viewState, System.currentTimeMillis());

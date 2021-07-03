@@ -81,8 +81,7 @@ public class GlobeController extends BaseController implements View.OnTouchListe
 		coordAdapter = new FakeGeocentricDisplayAdapter();
 
 		// Create the scene and map view
-		globeScene = new Scene(coordAdapter,renderControl);
-		scene = globeScene;
+		scene = new Scene(coordAdapter,renderControl);
 		globeView = new GlobeView(this,coordAdapter);
 		view = globeView;
 		globeView.northUp = true;
@@ -107,16 +106,21 @@ public class GlobeController extends BaseController implements View.OnTouchListe
 		if (c != null)
 			c.removeFrameCallback(this);
 		globeView.cancelAnimation();
+
+		// superclass shuts down the scene
+
 		super.shutdown();
+
 		globeView = null;
-		if (globeScene != null) {
-			globeScene.teardownGL();
-		}
 		if (gestureHandler != null) {
 			gestureHandler.shutdown();
 		}
 		gestureDelegate = null;
 		gestureHandler = null;
+
+		if (scene != null) {
+			scene.teardownGL();
+		}
 	}
 	
 	// Map version of view
@@ -126,9 +130,6 @@ public class GlobeController extends BaseController implements View.OnTouchListe
 	public GlobeView getGlobeView() {
 		return globeView;
 	}
-
-	// Map version of scene
-	Scene globeScene = null;
 
 	/**
 	 * True if the globe is keeping north facing up on the screen.
@@ -760,6 +761,10 @@ public class GlobeController extends BaseController implements View.OnTouchListe
 		globeView.setHeight(height);
 	}
 
+	public double getHeading() {
+		return (globeView != null) ? globeView.getHeading() : 0.0;
+	}
+
 	public void setHeading(final double heading) {
 		if (!isCompletelySetup()) {
 			if (!rendererAttached) {
@@ -940,7 +945,8 @@ public class GlobeController extends BaseController implements View.OnTouchListe
 		return false;
 	}
 
-    boolean isTilting = false, isPanning = false, isZooming = false, isRotating = false, isAnimating = false;
+    boolean isTilting = false, isPanning = false, isZooming = false, isRotating = false,
+			isAnimating = false, isUserMotion = false, isFinalMotion = false;
 
     public void tiltDidStart(boolean userMotion) { handleStartMoving(userMotion); isTilting = true; }
     public void tiltDidEnd(boolean userMotion) { isTilting = false; handleStopMoving(userMotion); }
@@ -961,17 +967,27 @@ public class GlobeController extends BaseController implements View.OnTouchListe
 		if (!isCompletelySetup())
 			return;
 
-        if (!isPanning && !isRotating && !isZooming && !isAnimating && !isTilting)
-            if (gestureDelegate != null) {
-				gestureDelegate.globeDidStartMoving(this, userMotion);
+		final GestureDelegate delegate = gestureDelegate;
+		if (delegate != null) {
+			if (!userMotion && (isPanning || isRotating || isZooming || isAnimating || isTilting)) {
+				// Transitioning from user motion to animation, e.g., for a fling
+				final Point3d[] corners = getVisibleCorners();
+				delegate.globeDidStopMoving(this, corners, isUserMotion);
+				delegate.globeDidStartMoving(this, false);
+			} else if (!isPanning && !isRotating && !isZooming && !isAnimating && !isTilting) {
+				delegate.globeDidStartMoving(this, userMotion);
 
+				// call doFrame on the next frame
 				Choreographer c = Choreographer.getInstance();
-				if (c != null)
+				if (c != null) {
+					c.removeFrameCallback(this);
 					c.postFrameCallback(this);
+				}
 			}
+		}
 
-		if (!userMotion)
-			isAnimating = true;
+		isUserMotion = userMotion;
+		isAnimating = !userMotion;
 	}
 
 	/**
@@ -981,20 +997,15 @@ public class GlobeController extends BaseController implements View.OnTouchListe
 	 */
 	public void handleStopMoving(boolean userMotion)
 	{
-		if (!userMotion)
-			isAnimating = false;
-
 		if (!isCompletelySetup())
 			return;
 
-		if (isPanning || isRotating || isZooming || isAnimating || isTilting)
-			return;
-
-		if (gestureDelegate != null)
-		{
-			Point3d[] corners = getVisibleCorners();
-			gestureDelegate.globeDidStopMoving(this,corners,userMotion);
+		if (!isPanning && !isRotating && !isZooming && !isTilting) {
+			// Call didStopMoving after the next frame update
+			isFinalMotion = true;
 		}
+
+		isAnimating = false;
 	}
 
 	double lastViewUpdate = 0.0;
@@ -1005,10 +1016,20 @@ public class GlobeController extends BaseController implements View.OnTouchListe
 	{
 		if (globeView != null) {
 			double newUpdateTime = globeView.getLastUpdatedTime();
+			Point3d[] corners = null;
 			if (gestureDelegate != null && lastViewUpdate < newUpdateTime) {
-				Point3d[] corners = getVisibleCorners();
-				gestureDelegate.globeDidMove(this, corners, false);
+				corners = getVisibleCorners();
+				gestureDelegate.globeDidMove(this, corners, isUserMotion);
 				lastViewUpdate = newUpdateTime;
+			}
+			if (isFinalMotion) {
+				if (gestureDelegate != null) {
+					if (corners == null) {
+						corners = getVisibleCorners();
+					}
+					gestureDelegate.globeDidStopMoving(this, corners, isUserMotion);
+				}
+				isFinalMotion = false;
 			}
 		}
 

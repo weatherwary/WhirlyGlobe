@@ -529,7 +529,7 @@ public class BaseController implements RenderController.TaskManager, RenderContr
 			String bundleVersion = pInfo.versionName;
 			String osversion = "Android " + Build.VERSION.RELEASE;
 			String model = Build.MANUFACTURER + " " + Build.MODEL;
-			String wgMaplyVersion = "3.2";
+			String wgMaplyVersion = "3.3";
 			String json = String.format(
 					"{ \"userid\":\"%s\", \"bundleid\":\"%s\", \"bundlename\":\"%s\", \"bundlebuild\":\"%s\", \"bundleversion\":\"%s\", \"osversion\":\"%s\", \"model\":\"%s\", \"wgmaplyversion\":\"%s\" }",
 					userID, bundleID, bundleName, bundleBuild, bundleVersion, osversion, model, wgMaplyVersion);
@@ -701,13 +701,10 @@ public class BaseController implements RenderController.TaskManager, RenderContr
 				metroThread = null;
 			}
 
-
 			if (scene != null) {
 				scene.teardownGL();
+				scene = null;
 			}
-
-			//		scene.dispose();
-			//		view.dispose();
 
 			if (coordAdapter != null)
 				coordAdapter.shutdown();
@@ -718,7 +715,7 @@ public class BaseController implements RenderController.TaskManager, RenderContr
 			final EGL10 egl = (EGL10) EGLContext.getEGL();
 			synchronized (glContexts) {
 				for (ContextInfo context : glContexts) {
-					egl.eglDestroySurface(renderControl.display, context.eglSurface);
+					egl.eglDestroySurface(renderControl.display, context.eglDrawSurface);
 					egl.eglDestroyContext(renderControl.display, context.eglContext);
 				}
 				glContexts.clear();
@@ -726,7 +723,7 @@ public class BaseController implements RenderController.TaskManager, RenderContr
 
 			// And the main one
 			if (renderWrapper != null && renderWrapper.maplyRender != null && glContext != null) {
-				egl.eglDestroySurface(renderControl.display, glContext.eglSurface);
+				egl.eglDestroySurface(renderControl.display, glContext.eglDrawSurface);
 				egl.eglDestroyContext(renderControl.display, glContext.eglContext);
 				glContext = null;
 			}
@@ -835,7 +832,7 @@ public class BaseController implements RenderController.TaskManager, RenderContr
 					return null;
 				}
 
-				retContext = new ContextInfo(context, surface);
+				retContext = new ContextInfo(renderControl.display, context, surface, surface);
 				numTempContextsCreated = numTempContextsCreated + 1;
 
 				//Log.d("Maply","Created context + " + retContext.eglContext.toString());
@@ -1026,14 +1023,15 @@ public class BaseController implements RenderController.TaskManager, RenderContr
 			// Make our own context that we can use on the main thread
 			final EGL10 egl = (EGL10) EGLContext.getEGL();
 
-			glContext = new ContextInfo();
+			glContext = new ContextInfo(renderControl.display, null, null, null);
 			glContext.eglContext = egl.eglCreateContext(renderControl.display, renderControl.config, renderControl.context, glAttribList);
 			if (LayerThread.checkGLError(egl, "eglCreateContext") || glContext.eglContext == null) {
 				return;
 			}
 
-			glContext.eglSurface = egl.eglCreatePbufferSurface(renderControl.display, renderControl.config, glSurfaceAttrs);
-			if (LayerThread.checkGLError(egl, "eglCreatePbufferSurface") || glContext.eglSurface == null) {
+			glContext.eglDrawSurface = egl.eglCreatePbufferSurface(renderControl.display, renderControl.config, glSurfaceAttrs);
+			glContext.eglReadSurface = glContext.eglDrawSurface;
+			if (LayerThread.checkGLError(egl, "eglCreatePbufferSurface") || glContext.eglDrawSurface == null) {
 				egl.eglDestroyContext(renderControl.display, glContext.eglContext);
 				return;
 			}
@@ -1071,32 +1069,31 @@ public class BaseController implements RenderController.TaskManager, RenderContr
     /**
      * Set the EGL Context we created for the main thread, if we can.
      */
-    public boolean setEGLContext(ContextInfo cInfo)
+    public ContextInfo setEGLContext(ContextInfo cInfo)
     {
 		if (cInfo == null)
 			cInfo = glContext;
 
 		// This does seem to happen
-		if (renderWrapper == null || renderWrapper.maplyRender == null || renderControl.display == null)
-			return false;
+		if (renderWrapper == null || renderWrapper.maplyRender == null || renderControl.display == null) {
+			return null;
+		}
 
 		final EGL10 egl = (EGL10) EGLContext.getEGL();
         if (cInfo != null)
         {
-            if (!egl.eglMakeCurrent(renderControl.display, cInfo.eglSurface, cInfo.eglSurface, cInfo.eglContext)) {
-                Log.d("Maply", "Failed to make current context: " + Integer.toHexString(egl.eglGetError()));
+        	ContextInfo oldContext = RenderController.getEGLContext();
+            if (!egl.eglMakeCurrent(renderControl.display, cInfo.eglDrawSurface, cInfo.eglReadSurface, cInfo.eglContext)) {
 				dumpFailureInfo("setEGLContext 1");
-                return false;
+                return null;
             }
-
-            return true;
+            return oldContext;
         } else if (renderWrapper != null && renderWrapper.maplyRender != null && renderControl.display != null) {
 			if (!egl.eglMakeCurrent(renderControl.display, egl.EGL_NO_SURFACE, egl.EGL_NO_SURFACE, egl.EGL_NO_CONTEXT)) {
 				dumpFailureInfo("setEGLContext 2");
 			}
 		}
-
-        return false;
+		return null;
     }
 	
 	/**
@@ -1441,7 +1438,7 @@ public class BaseController implements RenderController.TaskManager, RenderContr
      */
     public ComponentObject addVector(final VectorObject vec,final VectorInfo vecInfo,RenderController.ThreadMode mode)
     {
-        ArrayList<VectorObject> vecObjs = new ArrayList<>();
+        ArrayList<VectorObject> vecObjs = new ArrayList<>(1);
         vecObjs.add(vec);
         return addVectors(vecObjs,vecInfo,mode);
     }
@@ -1490,6 +1487,20 @@ public class BaseController implements RenderController.TaskManager, RenderContr
 	}
 
 	/**
+	 * Change the visual representation of the given vectors.
+	 * @param vecObj The component object returned by the original addVectors() call.
+	 * @param vecInfo Visual representation to use for the changes.
+	 * @param mode Where to execute the add.  Choose ThreadAny by default.
+	 */
+	public void changeWideVector(final ComponentObject vecObj,final WideVectorInfo vecInfo,RenderController.ThreadMode mode)
+	{
+		if (!running)
+			return;
+
+		renderControl.changeWideVector(vecObj,vecInfo,mode);
+	}
+
+	/**
 	 * Add wide vectors to the MaplyController to display.  Vectors are linear or areal
 	 * features with line width, filled style, color and so forth defined by the
 	 * WideVectorInfo class.
@@ -1529,7 +1540,7 @@ public class BaseController implements RenderController.TaskManager, RenderContr
 	 */
 	public ComponentObject addWideVector(VectorObject vec,WideVectorInfo wideVecInfo,RenderController.ThreadMode mode)
 	{
-		ArrayList<VectorObject> vecObjs = new ArrayList<>();
+		ArrayList<VectorObject> vecObjs = new ArrayList<>(1);
 		vecObjs.add(vec);
 
 		return addWideVectors(vecObjs,wideVecInfo,mode);
@@ -1560,7 +1571,7 @@ public class BaseController implements RenderController.TaskManager, RenderContr
 	 */
 	public ComponentObject addLoftedPoly(final VectorObject vec,final LoftedPolyInfo loftInfo,RenderController.ThreadMode mode)
 	{
-		ArrayList<VectorObject> vecObjs = new ArrayList<>();
+		ArrayList<VectorObject> vecObjs = new ArrayList<>(1);
 		vecObjs.add(vec);
 		return addLoftedPolys(vecObjs,loftInfo,mode);
 	}
@@ -1594,7 +1605,7 @@ public class BaseController implements RenderController.TaskManager, RenderContr
 		if (!running)
 			return null;
 
-		ArrayList<ScreenMarker> markers = new ArrayList<>();
+		ArrayList<ScreenMarker> markers = new ArrayList<>(1);
 		markers.add(marker);
 		return addScreenMarkers(markers,markerInfo,mode);
 	}
@@ -1637,7 +1648,7 @@ public class BaseController implements RenderController.TaskManager, RenderContr
 		if (!running)
 			return null;
 
-		ArrayList<Marker> markers = new ArrayList<>();
+		ArrayList<Marker> markers = new ArrayList<>(1);
 		markers.add(marker);
 		return addMarkers(markers,markerInfo,mode);
 	}
@@ -1721,7 +1732,7 @@ public class BaseController implements RenderController.TaskManager, RenderContr
 		if (!running)
 			return null;
 
-		List<Points> ptList = new ArrayList<>();
+		List<Points> ptList = new ArrayList<>(1);
 		ptList.add(pts);
 
 		return addPoints(ptList,geomInfo,mode);
@@ -1830,7 +1841,7 @@ public class BaseController implements RenderController.TaskManager, RenderContr
 		if (!running)
 			return null;
 		
-		ArrayList<ScreenLabel> labels = new ArrayList<>();
+		ArrayList<ScreenLabel> labels = new ArrayList<>(1);
 		labels.add(label);
 		return addScreenLabels(labels,labelInfo,mode);
 	}
@@ -1926,7 +1937,7 @@ public class BaseController implements RenderController.TaskManager, RenderContr
      */
 	public void removeTexture(final MaplyTexture tex,RenderController.ThreadMode mode)
 	{
-        ArrayList<MaplyTexture> texs = new ArrayList<>();
+        ArrayList<MaplyTexture> texs = new ArrayList<>(1);
         texs.add(tex);
         removeTextures(texs,mode);
 	}
@@ -2092,7 +2103,7 @@ public class BaseController implements RenderController.TaskManager, RenderContr
 		if (!running)
 			return;
 
-		ArrayList<ComponentObject> compObjs = new ArrayList<>();
+		ArrayList<ComponentObject> compObjs = new ArrayList<>(1);
 		compObjs.add(compObj);
 
 		disableObjects(compObjs, mode);
@@ -2124,7 +2135,7 @@ public class BaseController implements RenderController.TaskManager, RenderContr
 		if (!running)
 			return;
 
-		ArrayList<ComponentObject> compObjs = new ArrayList<>();
+		ArrayList<ComponentObject> compObjs = new ArrayList<>(1);
 		compObjs.add(compObj);
 
 		enableObjects(compObjs, mode);
@@ -2141,7 +2152,7 @@ public class BaseController implements RenderController.TaskManager, RenderContr
 		if (compObj == null)
 			return;
 
-		ArrayList<ComponentObject> compObjs = new ArrayList<>();
+		ArrayList<ComponentObject> compObjs = new ArrayList<>(1);
 		compObjs.add(compObj);
 		removeObjects(compObjs, mode);
 	}
@@ -2426,6 +2437,30 @@ public class BaseController implements RenderController.TaskManager, RenderContr
 	public void setScreenObjectDrawPriorityOffset(int offset) {
 		if (renderControl != null) {
 			renderControl.setScreenObjectDrawPriorityOffset(offset);
+		}
+	}
+
+	public boolean getShowDebugLayoutBoundaries() {
+		RenderController rc = renderControl;
+		if (rc != null) {
+			LayoutManager lm = rc.layoutManager;
+			if (lm != null) {
+				return lm.getShowDebugLayoutBoundaries();
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Show the edges of layout objects for debugging/troubleshooting
+	 */
+	public void setShowDebugLayoutBoundaries(boolean show) {
+		RenderController rc = renderControl;
+		if (rc != null) {
+			LayoutManager lm = rc.layoutManager;
+			if (lm != null) {
+				lm.setShowDebugLayoutBoundaries(show);
+			}
 		}
 	}
 
