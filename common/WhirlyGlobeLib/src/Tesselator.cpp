@@ -75,7 +75,6 @@ void TesselateLoops(const std::vector<VectorRing> &loops,VectorTrianglesRef tris
     ma.extraVertices = 256; // realloc not provided, allow 256 extra vertic
 
     TESStesselator *tess = tessNewTess(&ma);
-    tessSetOption(tess, TESS_CONSTRAINED_DELAUNAY_TRIANGULATION, 1);
     
     Point2f org = (loops[0])[0];
     for (unsigned int li=0;li<loops.size();li++)
@@ -107,18 +106,8 @@ void TesselateLoops(const std::vector<VectorRing> &loops,VectorTrianglesRef tris
     const int* elems = tessGetElements(tess);
     const int nelems = tessGetElementCount(tess);
 
-    
-  const float* verts = tessGetVertices(tess);
-  const int* elems = tessGetElements(tess);
-  const int nelems = tessGetElementCount(tess);
-  
     for (int i = 0; i < nelems; i++)
     {
-//    tris->pts.push_back(Point3f(pos[0]/PolyScale2+org.x(), pos[1]/PolyScale2+org.y(), 0.0));
-//  }
-  
-      for (int i = 0; i < nelems; i++)
-      {
         const TESSindex* poly = &elems[i * verticesPerTriangle];
         VectorTriangles::Triangle triOut;
         int startPoint = (int)(tris->pts.size());
@@ -147,8 +136,7 @@ void TesselateLoops(const std::vector<VectorRing> &loops,VectorTrianglesRef tris
     }
  
     tessDeleteTess(tess);
-
-  
+    
     // Convert to triangles
     //    printf("  ");
 //    int startPoint = (int)(tris->pts.size());

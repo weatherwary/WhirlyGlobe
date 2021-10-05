@@ -203,6 +203,7 @@ void RenderTargetMTL::makeRenderPassDesc()
             case MTLPixelFormatR32Uint:
             case MTLPixelFormatRG32Uint:
             case MTLPixelFormatRGBA32Uint:
+          case MTLPixelFormatR16Float:
                 rpd.colorAttachments[0].clearColor = MTLClearColorMake(clearVal, clearVal, clearVal, clearVal);
                 break;
             default:
