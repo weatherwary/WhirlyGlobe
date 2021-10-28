@@ -127,6 +127,7 @@ RawDataRef TextureMTL::convertData()
     case TexTypeUnsignedByte:
     case TexTypeSingleChannel:
     case TexTypeSingleInt16:
+    case TexTypeSingleFloat32:
         // no conversion needed?
         return texData;
     case TexTypeDoubleChannel:

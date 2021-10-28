@@ -1208,15 +1208,15 @@ static inline bool dictBool(const NSDictionary *dict, const NSString *key, bool 
     [self resolveDrawPriority:inDesc info:&markerInfo drawPriority:kMaplyMarkerDrawPriorityDefault offset:0];
     
     // Convert to WG markers
-    std::vector<Marker*> wgMarkers;
+    std::vector<WhirlyKit::Marker*> wgMarkers;
     // Automatically delete on return or exception
-    std::vector<std::unique_ptr<Marker>> wgMarkerOwner;
+    std::vector<std::unique_ptr<WhirlyKit::Marker>> wgMarkerOwner;
     wgMarkers.reserve(markers.count);
     wgMarkerOwner.reserve(markers.count);
     
     for (MaplyMarker *marker in markers)
     {
-        auto wgMarker = std::make_unique<Marker>();
+        auto wgMarker = std::make_unique<WhirlyKit::Marker>();
         wgMarker->loc = GeoCoord(marker.loc.x,marker.loc.y);
 
         std::vector<MaplyTexture *> texs;

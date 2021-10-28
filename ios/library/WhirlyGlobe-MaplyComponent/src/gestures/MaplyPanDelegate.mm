@@ -85,10 +85,10 @@ using namespace Maply;
     else
         panRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:panDelegate action:@selector(panAction:)];
 #if TARGET_OS_MACCATALYST
-    if (@available(macCatalyst 13.4, *))
-    {
-        panRecognizer.allowedScrollTypesMask = UIScrollTypeMaskAll;
-    }
+//    if (@available(macCatalyst 13.4, *))
+//    {
+//        panRecognizer.allowedScrollTypesMask = UIScrollTypeMaskAll;
+//    }
 #endif
   	panRecognizer.delegate = panDelegate;
     panDelegate.gestureRecognizer = panRecognizer;
