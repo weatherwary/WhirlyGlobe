@@ -3,7 +3,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 6/2/14.
- *  Copyright 2011-2016 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -87,15 +87,24 @@ JNIEXPORT jboolean JNICALL Java_com_mousebird_maply_Texture_setBitmap
 			return false;
 
 		// Copy the raw data over to the texture
-		void* bitmapPixels;
-		if (AndroidBitmap_lockPixels(env, bitmapObj, &bitmapPixels) < 0)
+		void* bitmapPixels = nullptr;
+		if (AndroidBitmap_lockPixels(env, bitmapObj, &bitmapPixels) != ANDROID_BITMAP_RESULT_SUCCESS)
 			return false;
 
-		//uint32_t* src = (uint32_t*) bitmapPixels;
-		MutableRawData *rawData = new MutableRawData(bitmapPixels,info.height*info.width*4);
-		tex->setRawData(rawData, info.width, info.height);
+		try
+		{
+			// Make a copy
+			auto rawData = new MutableRawData(bitmapPixels, info.height * info.width * 4);
+			// takes ownership
+			tex->setRawData(rawData, (int)info.width, (int)info.height);
+		}
+		catch (...)
+		{
+			// Make sure to release the lock, even in case of an exception
+			AndroidBitmap_unlockPixels(env, bitmapObj);
+			throw;
+		}
 		AndroidBitmap_unlockPixels(env, bitmapObj);
-		classInfo->setHandle(env, obj, tex);
 
 		return true;
 	}

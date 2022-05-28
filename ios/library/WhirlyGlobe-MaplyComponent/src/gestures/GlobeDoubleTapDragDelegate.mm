@@ -1,9 +1,7 @@
-/*
- *  GlobeDoubleTapDragDelegate.mm
- *
+/*  GlobeDoubleTapDragDelegate.mm
  *
  *  Created by Steve Gifford on 2/7/14.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,14 +13,16 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- *
  */
 
 #import <UIKit/UIKit.h>
 #import "GlobeMath.h"
 #import "gestures/GlobeDoubleTapDragDelegate.h"
+#import "private/GlobeDoubleTapDragDelegate_private.h"
 #import "GlobeView.h"
+#import "GlobeView_iOS.h"
 #import "ViewWrapper.h"
+#import "SceneRenderer.h"
 
 using namespace WhirlyKit;
 using namespace WhirlyGlobe;

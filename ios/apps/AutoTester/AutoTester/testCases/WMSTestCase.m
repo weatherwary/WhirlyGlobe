@@ -3,17 +3,12 @@
 //  AutoTester
 //
 //  Created by Ranen Ghosh on 4/7/16.
-//  Copyright © 2016-2017 mousebird consulting.
+//  Copyright 2016-2022 mousebird consulting.
 //
 
 #import "WMSTestCase.h"
-#import "MaplyBaseViewController.h"
-#import "MaplyViewController.h"
-#import "WhirlyGlobeViewController.h"
-
-#import "MaplyWMSTileSource.h"
 #import "DDXML.h"
-#import "AutoTester-Swift.h"
+#import "SwiftBridge.h"
 
 @implementation WMSTestCase {
     MaplyBaseViewController *_baseVC;

@@ -3,10 +3,11 @@
 //  AutoTester
 //
 //  Created by Steve Gifford on 2/8/21.
-//  Copyright © 2021 mousebird consulting. All rights reserved.
+//  Copyright 2021-2022 mousebird consulting. All rights reserved.
 //
 
 import Foundation
+import WhirlyGlobe
 
 // A very dumb graph builder
 class GraphBuilder {
@@ -40,24 +41,21 @@ class GraphBuilder {
 class AirwayTestCase: MaplyTestCase {
     
     override init() {
-        super.init()
-        
-        self.name = "Airways & Airspaces"
-        self.implementations = [.globe, .map]
+        super.init(name: "Airways & Airspaces", supporting: [.globe, .map])
     }
     
     let baseCase = StamenWatercolorRemote()
     
     let buildPointMarkers = true
     let buildPointLabels = false
-    let buildAirways = false
+    let buildAirways = true
     let buildAirspaces = true
     let buildLineLabels = false
     let buildCenterLabels = false
     
     func setupAirways(_ viewC: MaplyBaseViewController) {
         DispatchQueue.global(qos: .default).async {
-            guard let vecObj = MaplyVectorObject(fromShapeFile: "ATS_Route") else {
+            guard let vecObj = MaplyVectorObject(shapeFile: "ATS_Route") else {
                 print("Failed to load ATS_Route shapefile")
                 return
             }
@@ -177,7 +175,7 @@ class AirwayTestCase: MaplyTestCase {
     }
     
     func setupAirspaces(_ viewC: MaplyBaseViewController) {
-        guard let vecObj = MaplyVectorObject(fromShapeFile: "Airspace_Boundary") else {
+        guard let vecObj = MaplyVectorObject(shapeFile: "Airspace_Boundary") else {
             print("Failed to load Airspace_Boundary shapefile")
             return
         }

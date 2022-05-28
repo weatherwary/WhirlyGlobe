@@ -3,13 +3,10 @@
 //  AutoTester
 //
 //  Created by jmnavarro on 3/11/15.
-//  Copyright © 2015-2017 mousebird consulting.
+//  Copyright 2015-2022 mousebird consulting.
 //
 
 #import "LoftedPolysTestCase.h"
-#import "MaplyVectorObject.h"
-#import "WhirlyGlobeViewController.h"
-#import "MaplyComponentObject.h"
 #import "VectorsTestCase.h"
 
 @implementation LoftedPolysTestCase

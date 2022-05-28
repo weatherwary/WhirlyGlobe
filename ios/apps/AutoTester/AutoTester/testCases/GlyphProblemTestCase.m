@@ -3,14 +3,14 @@
 //  AutoTester
 //
 //  Created by zhoujiong on 2019/11/12.
-//  Copyright © 2019 mousebird consulting. All rights reserved.
+//  Copyright 2019-2022 mousebird consulting. All rights reserved.
 //
 
 #define MIN_HEIGHT 0.000251845893
 #define MAX_HEIGHT 2.0
 
 #import "GlyphProblemTestCase.h"
-#import "AutoTester-Swift.h"
+#import "SwiftBridge.h"
 
 @interface GlyphProblemTestCase()
 

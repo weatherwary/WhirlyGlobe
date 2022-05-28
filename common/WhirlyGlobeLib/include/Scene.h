@@ -3,7 +3,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 1/3/11.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -272,7 +272,7 @@ public:
     void addChangeRequest(ChangeRequest *newChange);
     /// Add a list of change requets.  You can call this from any thread.
     /// This is the faster option if you have more than one change request
-    void addChangeRequests(const ChangeSet &newchanges);
+    void addChangeRequests(ChangeSet &newchanges);
     
     /// Process change requests
     /// Only the renderer should call this in the rendering thread
@@ -325,8 +325,11 @@ public:
     virtual bool removeTexture(SimpleIdentity texID);
 
     /// Called once by the renderer so we can reset any managers that care
-    void setRenderer(SceneRenderer *renderer);
-    
+    void setRenderer(SceneRenderer *inRenderer);
+
+    /// Get the current scene renderer
+    SceneRenderer* getRenderer() const { return renderer; }
+
     /// Return the given manager.  This is thread safe;
     SceneManagerRef getManager(const char *name) { return getManager(std::string(name)); }
     /// Return the given manager.  This is thread safe;
@@ -499,6 +502,8 @@ protected:
     
     // The font texture manager is created at startup
     FontTextureManagerRef fontTextureManager;
+
+    SceneRenderer* renderer;
 };
-	
+
 }

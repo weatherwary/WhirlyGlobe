@@ -2,7 +2,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 4/15/13.
- *  Copyright 2011-2021 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -43,8 +43,8 @@ class FontManager : public Identifiable
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
+    FontManager() = default;
     FontManager(SimpleIdentity theId) : Identifiable(theId) { }
-    FontManager();
     virtual ~FontManager();
     
     // Comparison operator
@@ -54,21 +54,21 @@ public:
     virtual void teardown(PlatformThreadInfo *) { }
 
     // Mapping info from glyph to location in a dynamic texture
-    class GlyphInfo
+    struct GlyphInfo
     {
-    public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
-        GlyphInfo() : glyph(0), refCount(0) { }
-        GlyphInfo(WKGlyph glyph) : glyph(glyph), refCount(0) { }
-        bool operator < (const GlyphInfo &that) const
-        { return glyph < that.glyph; }
-        WKGlyph glyph;
-        Point2f size;
-        Point2f offset;
-        Point2f textureOffset;
-        SubTexture subTex;
-        int refCount;
+        GlyphInfo() = default;
+        GlyphInfo(WKGlyph glyph) : glyph(glyph) { }
+        bool operator < (const GlyphInfo &that) const { return glyph < that.glyph; }
+
+        WKGlyph glyph = 0;
+        Point2f size = {0.0f, 0.0f};
+        Point2f offset = {0.0f, 0.0f};
+        Point2f textureOffset = {0.0f, 0.0f};
+        SubTexture subTex = 0;
+        int refCount = 0;
+        float baseline = 0.0f;
     };
     
     typedef struct GlyphInfoSorter
@@ -82,7 +82,9 @@ public:
     GlyphInfo *findGlyph(WKGlyph glyph);
     
     // Add the given glyph info
-    GlyphInfo *addGlyph(WKGlyph glyph,SubTexture subTex,const Point2f &size,const Point2f &offset,const Point2f &textureOffset);
+    GlyphInfo *addGlyph(WKGlyph glyph,const SubTexture &subTex,
+                        const Point2f &size,const Point2f &offset,
+                        const Point2f &textureOffset);
     
     // Remove references to the given glyphs.
     void addGlyphRefs(const GlyphSet &usedGlyphs);
@@ -90,14 +92,14 @@ public:
     // Returns a list of texture references to remove
     void removeGlyphRefs(const GlyphSet &usedGlyphs,std::vector<SubTexture> &toRemove);
     
-    int refCount;
-    RGBAColor color;
-    RGBAColor backColor;
+    int refCount = 0;
+    RGBAColor color = RGBAColor::white();
+    RGBAColor backColor = RGBAColor::black();
+    RGBAColor outlineColor = RGBAColor::black();
     std::string fontName;
-    RGBAColor outlineColor;
-    float outlineSize;
-    float pointSize;
-    
+    float outlineSize = 0.0f;
+    float pointSize = 0.0f;
+
 protected:
     // Maps Glyphs (shorts) to texture and region
     typedef std::set<GlyphInfo *,GlyphInfoSorter> GlyphInfoSet;
@@ -110,22 +112,19 @@ typedef std::map<SimpleIdentity,GlyphSet> SimpleIDGlyphMap;
 /** Information sufficient to draw a string as 3D geometry.
     All coordinates are in a local space related to the font size.
  */
-class DrawableString : public Identifiable
+struct DrawableString : public Identifiable
 {
-public:
-    DrawableString() { }
-    
     /// A rectangle describing the placement of a single glyph and
     ///  the texture piece used to represent it
-    class Rect
+    struct Rect
     {
-    public:
         Point2f pts[2];
         TexCoord texCoords[2];
-        SubTexture subTex;
+        SubTexture subTex = 0;
     };
+
     std::vector<Rect> glyphPolys;
-    
+
     /// Bounding box of the string in coordinates related to the font size
     Mbr mbr;
 };
@@ -180,9 +179,9 @@ protected:
 
     FontManagerMap fontManagers;
 
-    SceneRenderer *sceneRender;
-    Scene *scene;
-    DynamicTextureAtlas *texAtlas;
+    SceneRenderer *sceneRender = nullptr;
+    Scene *scene = nullptr;
+    DynamicTextureAtlas *texAtlas = nullptr;
     DrawStringRepSet drawStringReps;
     std::mutex lock;    
 };

@@ -1,9 +1,8 @@
-/*
- *  MaplyBridge.h
+/*  MaplyBridge.h
  *  MaplyBridge
  *
  *  Created by jmnavarro on 7/19/15.
- *  Copyright 2015 mousebird consulting
+ *  Copyright 2015-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,11 +14,10 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- *
  */
 
-#import "MaplyComponent.h"
-#import "control/MaplyBaseViewController.h"
-#import "control/WhirlyGlobeViewController.h"
-#import "control/MaplyGlobeRenderController.h"
-#import "control/MaplyViewController.h"
+#import <WhirlyGlobe/MaplyComponent.h>
+#import <WhirlyGlobe/MaplyBaseViewController.h>
+#import <WhirlyGlobe/WhirlyGlobeViewController.h>
+#import <WhirlyGlobe/MaplyGlobeRenderController.h>
+#import <WhirlyGlobe/MaplyViewController.h>

@@ -2,7 +2,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 5/29/14.
- *  Copyright 2011-2021 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -36,11 +36,7 @@ WideVectorDrawableBuilder::WideVectorDrawableBuilder(std::string name,
       p1_index(-1), n0_index(-1), offset_index(-1), c0_index(-1), tex_index(-1)
 {
 }
-    
-WideVectorDrawableBuilder::~WideVectorDrawableBuilder()
-{
-}
-    
+
 void WideVectorDrawableBuilder::Init(unsigned int numVert,
                                      unsigned int numTri,
                                      unsigned int numCenterline,
@@ -55,8 +51,14 @@ void WideVectorDrawableBuilder::Init(unsigned int numVert,
     basicDrawable->Init();
     basicDrawable->setupStandardAttributes();
     basicDrawable->setType(Triangles);
-    basicDrawable->points.reserve(numVert);
-    basicDrawable->tris.reserve(numTri);
+    if (numVert > 0)
+    {
+        basicDrawable->points.reserve(numVert);
+    }
+    if (numTri > 0)
+    {
+        basicDrawable->tris.reserve(numTri);
+    }
     
     if (implType == WideVecImplPerf) {
         instDrawable = renderer->makeBasicDrawableInstanceBuilder(name);
@@ -98,12 +100,6 @@ void WideVectorDrawableBuilder::setLineOffset(float inOffset)
     lineOffsetSet = true;
 }
  
-void WideVectorDrawableBuilder::setTexRepeat(float inTexRepeat)
-    { texRepeat = inTexRepeat; }
-
-void WideVectorDrawableBuilder::setEdgeSize(float inEdgeSize)
-    { edgeSize = inEdgeSize; }
-
 unsigned int WideVectorDrawableBuilder::addPoint(const Point3f &pt)
 {
 #ifdef WIDEVECDEBUG
@@ -228,12 +224,13 @@ void WideVectorDrawableBuilder::addCenterLine(const Point3d &centerPt,
                                               int prev,int next)
 {
     CenterPoint pt;
-    pt.center = Point3f(centerPt.x(),centerPt.y(),centerPt.z());
-    pt.up = Point3f(up.x(),up.y(),up.z());
-    pt.len = (float)len;
+    pt.center = centerPt.cast<float>();
+    pt.up = up.cast<float>();
+    pt.segLen = (float)len;
+    pt.totalLen = centerline.empty() ? 0.0f : (centerline.back().totalLen + centerline.back().segLen);
     pt.color = inColor;
     pt.maskIDs[0] = maskIDs.empty() ? 0 : (int)maskIDs[0];
-    pt.maskIDs[1] = maskIDs.size() > 1 ? (int)maskIDs[1] : 0;
+    pt.maskIDs[1] = (maskIDs.size() > 1) ? (int)maskIDs[1] : 0;
     pt.prev = prev;
     pt.next = next;
     centerline.push_back(pt);

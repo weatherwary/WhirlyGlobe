@@ -3,7 +3,7 @@
  *  WhirlyGlobe-MaplyComponent
  *
  *  Created by Steve Gifford on 3/27/18.
- *  Copyright 2011-2019 Saildrone Inc
+ *  Copyright 2011-2022 Saildrone Inc
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -18,10 +18,10 @@
  *
  */
 
-#import "control/MaplyControllerLayer.h"
-#import "math/MaplyCoordinateSystem.h"
-#import "loading/MaplyTileSourceNew.h"
-#import "control/MaplyRenderController.h"
+#import <WhirlyGlobe/MaplyControllerLayer.h>
+#import <WhirlyGlobe/MaplyCoordinateSystem.h>
+#import <WhirlyGlobe/MaplyTileSourceNew.h>
+#import <WhirlyGlobe/MaplyRenderController.h>
 
 /**
     Sampling parameters.

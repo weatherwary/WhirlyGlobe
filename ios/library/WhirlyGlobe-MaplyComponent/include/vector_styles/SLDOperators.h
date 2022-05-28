@@ -3,11 +3,11 @@
 //  SLDTest
 //
 //  Created by Ranen Ghosh on 2016-08-12.
-//  Copyright © 2016-2019 mousebird consulting.
+//  Copyright 2016-2019 mousebird consulting.
 //
 
 #import <Foundation/Foundation.h>
-#import "vector_styles/SLDExpressions.h"
+#import <WhirlyGlobe/SLDExpressions.h>
 
 /** @brief Base class for elements of ogc:comparisonOps or ogc:logicOps.
  

@@ -3,13 +3,20 @@
 //  WhirlyGlobeSwiftTester
 //
 //  Created by jmnavarro on 16/09/15.
-//  Copyright (c) 2015-2020 mousebird consulting. All rights reserved.
+//  Copyright 2015-2022 mousebird consulting. All rights reserved.
 //
 
 #ifndef AutoTester_MaplyTesterBridge_h
 #define AutoTester_MaplyTesterBridge_h
 
-#import "MaplyBridge.h"
+#import <WhirlyGlobe/MaplyBridge.h>
+#import <WhirlyGlobe/GeoJSONSource.h>
+#import <WhirlyGlobe/MaplyShape.h>
+#import <WhirlyGlobe/MaplyBaseViewController.h>
+#import <WhirlyGlobe/MaplyGeomModel.h>
+#import <WhirlyGlobe/MaplyMatrix.h>
+#import <WhirlyGlobe/MaplyViewController.h>
+#import <WhirlyGlobe/GeographicLib_ObjC.h>
 
 #import "MaplyTestCase.h"
 #import "VectorsTestCase.h"
@@ -30,13 +37,12 @@
 #import "PagingLayerTestCase.h"
 #import "VectorHoleTestCase.h"
 #import "VectorStyleTestCase.h"
-#import "ActiveObjectTestCase.h"
-#import "GeoJSONSource.h"
 #import "GlyphProblemTestCase.h"
 #import "ChangeVectorsTestCase.h"
 #import "RepresentationsTestCase.h"
-#import "GeographicLib.h"
 #import "LIDARTestCase.h"
 #import "ParticleTest.h"
+
+#import "GeographicLib.h"
 
 #endif

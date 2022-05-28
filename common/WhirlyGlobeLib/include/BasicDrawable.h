@@ -2,7 +2,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 2/1/11.
- *  Copyright 2011-2021 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -190,9 +190,8 @@ public:
 
     // Block of data to be passed into a given buffer ID
     // We do this in Metal rather than setting individual uniforms (like OpenGL)
-    class UniformBlock
+    struct UniformBlock
     {
-    public:
         int bufferID;  // Actually an index into a shared shader structure, not a buffer
         RawDataRef blockData;
     };

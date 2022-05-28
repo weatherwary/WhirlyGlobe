@@ -2,7 +2,7 @@
 *  WhirlyGlobeLib
 *
 *  Created by Steve Gifford on 4/8/20.
-*  Copyright 2011-2021 mousebird consulting
+*  Copyright 2011-2022 mousebird consulting
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -102,7 +102,7 @@ public:
 class MaplyVectorFunctionStops
 {
 public:
-    bool parse(const DictionaryRef &entry,MapboxVectorStyleSetImpl *styleSet,bool isText);
+    bool parse(const DictionaryRef &entry,bool isText);
 
     /// @brief Calculate a value given the zoom level
     double valueForZoom(double zoom);
@@ -255,15 +255,17 @@ public:
     static int enumValue(const DictionaryEntryRef &entry, const char * const options[],int defVal);
 
     /// Builds a transitionable double object from a style entry and returns that
-    MapboxTransDoubleRef transDouble(const DictionaryEntryRef &entry,double defVal);
-    
+    static MapboxTransDoubleRef transDouble(const DictionaryEntryRef &entry, double defVal);
+    static MapboxTransDoubleRef transDouble(const DictionaryEntryRef &entry, const char *valName, double defVal);
+
     /// Builds a transitionable double object from a style entry lookup and returns that
-    MapboxTransDoubleRef transDouble(const std::string &valName, const DictionaryRef &entry, double defVal);
+    static MapboxTransDoubleRef transDouble(const std::string &valName, const DictionaryRef &entry, double defVal);
 
     /// Builds a transitionable color object and returns that
-    MapboxTransColorRef transColor(const std::string &valName, const DictionaryRef &entry, const RGBAColor *);
-    MapboxTransColorRef transColor(const std::string &name,const DictionaryRef &entry,const RGBAColor &);
-    
+    static MapboxTransColorRef transColor(const DictionaryEntryRef &entry, const char *valName, const RGBAColorRef &);
+    static MapboxTransColorRef transColor(const std::string &name, const DictionaryRef &entry, const RGBAColorRef &);
+    static MapboxTransColorRef transColor(const std::string &name, const DictionaryRef &entry, const RGBAColor &);
+
     /// Builds a transitional text object
     MapboxTransTextRef transText(const std::string &name,const DictionaryRef &entry,const std::string &str);
 
@@ -326,7 +328,10 @@ public:
     virtual SimpleIdentity makeLineTexture(PlatformThreadInfo *inst,const std::vector<double> &dashComponents) = 0;
     
     /// Create a local platform LabelInfo (since fonts are local)
-    virtual LabelInfoRef makeLabelInfo(PlatformThreadInfo *inst,const std::vector<std::string> &fontName,float fontSize) = 0;
+    virtual LabelInfoRef makeLabelInfo(PlatformThreadInfo *,
+                                       const std::vector<std::string> &fontNames,
+                                       float fontHeight,
+                                       bool mergedSymbol) = 0;
     
     /// Create a local platform label (fonts are local, and other stuff)
     virtual SingleLabelRef makeSingleLabel(PlatformThreadInfo *inst,const std::string &text) = 0;
@@ -342,6 +347,19 @@ public:
 
     /// Create a local platform component object
     virtual ComponentObjectRef makeComponentObject(PlatformThreadInfo *inst, const Dictionary *desc = nullptr) = 0;
+
+    /// Check whether the stylesheet already has representation layers
+    virtual bool hasRepresentations();
+
+    /// Add representation layers
+    virtual bool addRepresentations(PlatformThreadInfo *, const char* uuidAttr,
+                                    const std::vector<std::string> &sources,
+                                    const std::vector<std::string> &reps,
+                                    const std::vector<float> &sizes,
+                                    const std::vector<std::string> &colors);
+
+protected:
+    void addLayer(PlatformThreadInfo *, MapboxVectorStyleLayerRef);
 
 public:
     Scene *scene;
@@ -377,7 +395,8 @@ public:
     SimpleIdentity vectorArealProgramID;
     SimpleIdentity vectorLinearProgramID;
     SimpleIdentity wideVectorProgramID;
-    
+    SimpleIdentity wideVectorPerfProgramID;
+
     int zoomSlot;
     long long currentID;
 };

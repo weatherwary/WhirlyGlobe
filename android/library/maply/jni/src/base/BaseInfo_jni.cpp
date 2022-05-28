@@ -3,7 +3,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 11/16/15.
- *  Copyright 2011-2016 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -317,7 +317,8 @@ JNIEXPORT void JNICALL Java_com_mousebird_maply_BaseInfo_setFade
         BaseInfoRef *info = classInfo->getObject(env,obj);
         if (!info)
             return;
-        (*info)->fade = fade;
+        (*info)->fadeIn = fade;
+        (*info)->fadeOut = fade;
     }
     catch (...)
     {

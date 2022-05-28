@@ -1,9 +1,8 @@
-/*
- *  MaplyTapMessage.h
+/*  MaplyTapMessage.h
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 9/19/11.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -19,11 +18,6 @@
  */
 
 #import <UIKit/UIKit.h>
-#import "WhirlyVector.h"
-#import "MapView_iOS.h"
-
-/// This is the notification you get for a tap on the map
-#define MaplyTapMsg @"MaplyTap"
 
 /** Tap Message is an
 	indication that the user tapped on the map.
@@ -35,10 +29,6 @@
 @property (nonatomic,retain) UIView *view;
 //// Touch location on view in 2D
 @property (nonatomic,assign) CGPoint touchLoc;
-/// Lon/Lat
-@property (nonatomic,assign) WhirlyKit::GeoCoord whereGeo;
-/// 3D coordinates in the view
-@property (nonatomic,assign) WhirlyKit::Point3f worldLoc;
 /// Where the eye was.
 @property (nonatomic,assign) float heightAboveSurface;
 

@@ -3,7 +3,7 @@
  *  MaplyComponent
  *
  *  Created by Steve Gifford on 12/14/12.
- *  Copyright 2012-2021 mousebird consulting
+ *  Copyright 2012-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -1779,9 +1779,12 @@ static inline bool dictBool(const NSDictionary *dict, const NSString *key, bool 
     std::vector<VectorShapeRef> shapes;
     for (const MaplyVectorObject *vecObj in vectors)
     {
-        for (auto shape: vecObj->vObj->shapes) {
-            auto dict = std::dynamic_pointer_cast<iosMutableDictionary>(shape->getAttrDict());
-            [self resolveMaskIDs:dict->dict compObj:compObj];
+        for (const auto &shape: vecObj->vObj->shapes)
+        {
+            if (auto dict = dynamic_cast<const iosMutableDictionary*>(shape->getAttrDictRef().get()))
+            {
+                [self resolveMaskIDs:dict->dict compObj:compObj];
+            }
         }
 
         // Maybe need to make a copy if we're going to sample
@@ -2062,7 +2065,6 @@ static inline bool dictBool(const NSDictionary *dict, const NSString *key, bool 
 
     iosDictionary dictWrap(inDesc);
     ShapeInfo shapeInfo(dictWrap);
-    shapeInfo.insideOut = false;
     [self resolveInfoDefaults:inDesc info:&shapeInfo defaultShader:kMaplyDefaultTriangleShader];
     [self resolveDrawPriority:inDesc info:&shapeInfo drawPriority:kMaplyShapeDrawPriorityDefault offset:0];
 
@@ -2316,13 +2318,16 @@ typedef std::set<GeomModelInstances *,struct GeomModelInstancesCmp> GeomModelIns
     if (geomManager)
     {
         // Regular geometry instances
-        for (auto it : instSort)
+        for (const auto &it : instSort)
         {
             // Set up the textures and convert the geometry
-            MaplyGeomModel *model = it->model;
+            const MaplyGeomModel *model = it->model;
             
             // Return an existing base model or make a new one
-            SimpleIdentity baseModelID = [model getBaseModel:self fontTexManager:fontTexManager compObj:compObj mode:threadMode];
+            const SimpleIdentity baseModelID = [model getBaseModel:self
+                                                    fontTexManager:fontTexManager
+                                                           compObj:compObj
+                                                              mode:threadMode];
             
             // Reference count the textures for this comp obj
             compObj->contents->texs.insert(model->maplyTextures.begin(),model->maplyTextures.end());
@@ -2331,19 +2336,18 @@ typedef std::set<GeomModelInstances *,struct GeomModelInstancesCmp> GeomModelIns
             {
                 // Convert the instances
                 std::vector<GeometryInstance> matInst;
+                matInst.reserve(it->instances.size());
                 for (unsigned int ii=0;ii<it->instances.size();ii++)
                 {
                     MaplyGeomModelInstance *modelInst = it->instances[ii];
-                    Matrix4d localMat = localMat.Identity();
 
                     // Local transformation, before the placement
-                    if (modelInst.transform)
-                        localMat = modelInst.transform.mat;
+                    Matrix4d localMat = modelInst.transform ? modelInst.transform.mat : localMat.Identity();
                     
                     // Add in the placement
-                    Point3d localPt = coordSys->geographicToLocal(Point2d(modelInst.center.x,modelInst.center.y));
-                    Point3d dispLoc = coordAdapter->localToDisplay(Point3d(localPt.x(),localPt.y(),modelInst.center.z));
-                    Point3d norm = coordAdapter->normalForLocal(localPt);
+                    const Point3d localPt = coordSys->geographicToLocal(Point2d(modelInst.center.x,modelInst.center.y));
+                    const Point3d dispLoc = coordAdapter->localToDisplay(Point3d(localPt.x(),localPt.y(),modelInst.center.z));
+                    const Point3d norm = coordAdapter->normalForLocal(localPt);
                                         
                     // Construct a set of axes to build the shape around
                     Point3d xAxis,yAxis;
@@ -2838,14 +2842,16 @@ typedef std::set<GeomModelInstances *,struct GeomModelInstancesCmp> GeomModelIns
         std::vector<Billboard *> wkBills;
         for (MaplyBillboard *bill in bills)
         {
-            Billboard *wkBill = new Billboard();
-            Point3d localPt = coordSys->geographicToLocal3d(GeoCoord(bill.center.x,bill.center.y));
-            Point3d dispPt = coordAdapter->localToDisplay(Point3d(localPt.x(),localPt.y(),bill.center.z));
+            auto wkBill = std::make_unique<Billboard>();
+            const Point3d localPt = coordSys->geographicToLocal3d(GeoCoord(bill.center.x,bill.center.y));
+            const Point3d dispPt = coordAdapter->localToDisplay(Point3d(localPt.x(),localPt.y(),bill.center.z));
             wkBill->center = dispPt;
             wkBill->isSelectable = bill.selectable;
             if (wkBill->isSelectable)
+            {
                 wkBill->selectID = Identifiable::genId();
-            
+            }
+
             if (bill.selectable)
             {
                 compManager->addSelectObject(wkBill->selectID,bill);
@@ -2853,31 +2859,38 @@ typedef std::set<GeomModelInstances *,struct GeomModelInstancesCmp> GeomModelIns
             }
 
             MaplyScreenObject *screenObj = bill.screenObj;
-            if (!screenObj) {
-                delete wkBill;
+            if (!screenObj)
+            {
                 continue;
             }
-            MaplyBoundingBox size = [screenObj getSize];
-            Point2d size2d = Point2d(size.ur.x-size.ll.x,size.ur.y-size.ll.y);
+            const MaplyBoundingBox size = [screenObj getSize];
+            const Point2d size2d = Point2d(size.ur.x-size.ll.x,size.ur.y-size.ll.y);
             wkBill->size = size2d;
 
             // Work through the individual polygons in a billboard
-            for (SimplePolyRef thePoly : screenObj->screenObj.polys)
+            for (const SimplePolyRef &thePoly : screenObj->screenObj.polys)
             {
-                SimplePoly_iOSRef poly = std::dynamic_pointer_cast<SimplePoly_iOS>(thePoly);
-                SingleBillboardPoly billPoly;
+                auto poly = dynamic_cast<SimplePoly_iOS*>(thePoly.get());
+
+                wkBill->polys.emplace_back();
+                auto &billPoly = wkBill->polys.back();
+
                 billPoly.pts = poly->pts;
                 billPoly.texCoords = poly->texCoords;
                 billPoly.color = poly->color;
+
                 if (bill.vertexAttributes)
+                {
                     [self resolveVertexAttrs:billPoly.vertexAttrs from:bill.vertexAttributes];
+                }
                 if (poly->texture)
                 {
                     MaplyTexture *tex = nil;
                     if ([poly->texture isKindOfClass:[UIImage class]])
                     {
                         tex = [self addImage:poly->texture imageFormat:MaplyImageIntRGBA mode:threadMode];
-                    } else if ([poly->texture isKindOfClass:[MaplyTexture class]])
+                    }
+                    else if ([poly->texture isKindOfClass:[MaplyTexture class]])
                     {
                         tex = (MaplyTexture *)poly->texture;
                     }
@@ -2887,18 +2900,28 @@ typedef std::set<GeomModelInstances *,struct GeomModelInstancesCmp> GeomModelIns
                         billPoly.texId = tex.texID;
                     }
                 }
-                wkBill->polys.push_back(billPoly);
             }
             
             // Now for the strings
             for (auto theStrWrap : screenObj->screenObj.strings)
             {
-                StringWrapper_iOSRef strWrap = std::dynamic_pointer_cast<StringWrapper_iOS>(theStrWrap);
+                auto strWrap = dynamic_cast<StringWrapper_iOS*>(theStrWrap.get());
+                if (!strWrap)
+                {
+                    continue;
+                }
+
                 // Convert the string to polygons
-                DrawableString *drawStr = fontTexManager->addString(NULL, strWrap->str,changes);
+                auto drawStr = fontTexManager->addString(nullptr, strWrap->str,changes);
+                if (!drawStr)
+                {
+                    continue;
+                }
+
                 for (const DrawableString::Rect &rect : drawStr->glyphPolys)
                 {
-                    SingleBillboardPoly billPoly;
+                    wkBill->polys.emplace_back();
+                    auto &billPoly = wkBill->polys.back();
                     billPoly.pts.resize(4);
                     billPoly.texCoords.resize(4);
                     billPoly.texId = rect.subTex.texId;
@@ -2910,25 +2933,22 @@ typedef std::set<GeomModelInstances *,struct GeomModelInstancesCmp> GeomModelIns
                     billPoly.pts[1] = Point2d(rect.pts[1].x(),rect.pts[0].y());
                     billPoly.pts[2] = Point2d(rect.pts[1].x(),rect.pts[1].y());
                     billPoly.pts[3] = Point2d(rect.pts[0].x(),rect.pts[1].y());
+
                     for (unsigned int ip=0;ip<4;ip++)
                     {
-                        const Point2d &oldPt = billPoly.pts[ip];
-                        Point3d newPt = strWrap->mat * Point3d(oldPt.x(),oldPt.y(),1.0);
-                        billPoly.pts[ip] = Point2d(newPt.x(),newPt.y());
+                        billPoly.pts[ip] = Slice((strWrap->mat * Pad(billPoly.pts[ip], 1.0)).eval());
                     }
-                    
+
                     wkBill->polys.push_back(billPoly);
                 }
                 
                 compObj->contents->drawStringIDs.insert(drawStr->getId());
-                delete drawStr;
             }
             
-            wkBills.push_back(wkBill);
+            wkBills.push_back(wkBill.release());
         }
-        
-        SimpleIdentity billId = billManager->addBillboards(wkBills, billInfo, changes);
-        if (billId)
+
+        if (SimpleIdentity billId = billManager->addBillboards(wkBills, billInfo, changes))
         {
             compObj->contents->billIDs.insert(billId);
         }
@@ -3612,11 +3632,6 @@ typedef std::set<GeomModelInstances *,struct GeomModelInstancesCmp> GeomModelIns
 
 // Search for a point inside any of our vector objects
 // Runs in layer thread
-- (NSArray *)findVectorsInPoint:(Point2f)pt
-{
-    return [self findVectorsInPoint:pt inView:nil multi:true];
-}
-
 - (NSArray *)findVectorsInPoint:(Point2f)pt inView:(MaplyBaseViewController *)vc multi:(bool)multi
 {
     if (!layerThread || !vc || !vc->renderControl)
@@ -3645,7 +3660,55 @@ typedef std::set<GeomModelInstances *,struct GeomModelInstancesCmp> GeomModelIns
 
 - (NSObject*)selectLabelsAndMarkerForScreenPoint:(CGPoint)screenPoint
 {
-    return nil;
+    return [[self selectMultipleLabelsAndMarkersForScreenPoint:screenPoint] firstObject];
+}
+
+- (NSMutableArray*)selectMultipleLabelsAndMarkersForScreenPoint:(CGPoint)screenPoint
+{
+    NSMutableArray *retSelectArr = [NSMutableArray array];
+    return retSelectArr;
+}
+
+- (NSMutableArray*__nullable)convertSelectedObjects:(const std::vector<WhirlyKit::SelectionManager::SelectedObject> &)selectedObjs
+{
+    NSMutableArray *retSelectArr = [NSMutableArray array];
+    // Work through the objects the manager found, creating entries for each
+    for (unsigned int ii = 0; ii < selectedObjs.size(); ii++)
+    {
+        const SelectionManager::SelectedObject &theSelObj = selectedObjs[ii];
+
+        for (auto selectID : theSelObj.selectIDs)
+        {
+            MaplySelectedObject *selObj = [[MaplySelectedObject alloc] init];
+            selObj.selectedObj = compManager->getSelectObject(selectID);
+
+            selObj.screenDist = theSelObj.screenDist;
+            selObj.cluster = theSelObj.isCluster;
+            selObj.zDist = theSelObj.distIn3D;
+
+            if (selObj.selectedObj)
+                [retSelectArr addObject:selObj];
+        }
+    }
+
+    return retSelectArr;
+}
+
+- (NSMutableArray*)convertSelectedVecObjects:(NSArray<MaplyVectorObject *>*)vecObjs
+{
+    NSMutableArray *retSelectArr = [NSMutableArray array];
+
+    for (MaplyVectorObject *vecObj in vecObjs)
+    {
+        MaplySelectedObject *selObj = [[MaplySelectedObject alloc] init];
+        selObj.selectedObj = vecObj;
+        selObj.screenDist = 0.0;
+        // Note: Not quite right
+        selObj.zDist = 0.0;
+        [retSelectArr addObject:selObj];
+    }
+    
+    return retSelectArr;
 }
 
 - (void)dumpStats

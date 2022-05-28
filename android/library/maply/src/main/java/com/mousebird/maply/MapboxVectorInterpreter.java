@@ -2,7 +2,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 4/16/19.
- *  Copyright 2011-2021 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ package com.mousebird.maply;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Log;
+
+import androidx.annotation.NonNull;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -262,6 +264,22 @@ public class MapboxVectorInterpreter implements LoaderInterpreter
             }
         }
 
+        ArrayList<ComponentObject> ovlObjs = new ArrayList<>();
+        ComponentObject[] thisOvjObjs = tileData.getComponentObjects("overlay");
+        if (thisOvjObjs != null) {
+            Collections.addAll(ovlObjs, thisOvjObjs);
+        }
+
+        // Capture changes immediately so they are cleaned up
+        loadReturn.mergeChanges(tileData.getChangeSet());
+
+        if (loadReturn.isCanceled()) {
+            // We'll lose the component objects if we don't put them in here
+            loadReturn.addComponentObjects(tileData.getComponentObjects());
+            loadReturn.addOverlayComponentObjects(ovlObjs.toArray(new ComponentObject[0]));
+            return;
+        }
+
         if (images.isEmpty() && pbfData.isEmpty()) {
             loadReturn.errorString = "No usable data";
             return;
@@ -275,20 +293,6 @@ public class MapboxVectorInterpreter implements LoaderInterpreter
 
         try (LayerThread.WorkWrapper wr = samplingLayer.layerThread.startOfWorkWrapper()) {
             if (wr == null) {
-                return;
-            }
-
-            ArrayList<ComponentObject> ovlObjs = new ArrayList<>();
-            ComponentObject[] thisOvjObjs = tileData.getComponentObjects("overlay");
-            if (thisOvjObjs != null) {
-                Collections.addAll(ovlObjs, thisOvjObjs);
-            }
-
-            loadReturn.mergeChanges(tileData.getChangeSet());
-
-            if (loadReturn.isCanceled()) {
-                // We'll lose the component objects if we don't put them in here
-                loadReturn.addComponentObjects(tileData.getComponentObjects());
                 return;
             }
 
@@ -415,6 +419,13 @@ public class MapboxVectorInterpreter implements LoaderInterpreter
                 }
             }
         }
+    }
+
+    /**
+     * Some tiles were just removed.
+     */
+    @Override
+    public void tilesUnloaded(@NonNull TileID[] ids) {
     }
 
     private Bitmap lastBackground = null;

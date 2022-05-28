@@ -3,13 +3,10 @@
 //  AutoTester
 //
 //  Created by jmnavarro on 13/10/15.
-//  Copyright © 2015-2017 mousebird consulting.
+//  Copyright 2015-2022 mousebird consulting.
 //
 
 #import "MaplyTestCase.h"
-#import "WhirlyGlobeComponent.h"
-#import "MaplyComponent.h"
-
 
 @implementation MaplyTestCase
 
@@ -115,7 +112,10 @@
 	_name = name;
 }
 
-- (void)globeViewController:(WhirlyGlobeViewController *__nonnull)viewC allSelect:(NSArray *__nonnull)selectedObjs atLoc:(MaplyCoordinate)coord onScreen:(CGPoint)screenPt
+- (void)globeViewController:(WhirlyGlobeViewController *__nonnull)viewC
+                  allSelect:(NSArray *__nonnull)selectedObjs
+                      atLoc:(MaplyCoordinate)coord
+                   onScreen:(CGPoint)screenPt
 {
     [self handleSelection:selectedObjs];
 }
@@ -135,14 +135,20 @@
     [self handleSelection:selectedObj];
 }
 
-- (void)maplyViewController:(MaplyViewController *__nonnull)viewC didSelect:(NSObject *__nonnull)selectedObj atLoc:(MaplyCoordinate)coord onScreen:(CGPoint)screenPt
+- (void)maplyViewController:(MaplyViewController *__nonnull)viewC
+                  didSelect:(NSObject *__nonnull)selectedObj
+                      atLoc:(MaplyCoordinate)coord
+                   onScreen:(CGPoint)screenPt
 {
-    [self handleSelection:selectedObj];
+    [self handleSelection:selectedObj atLoc:coord onScreen:screenPt];
 }
 
-- (void)maplyViewController:(MaplyViewController *)viewC allSelect:(NSArray *)selectedObjs atLoc:(MaplyCoordinate)coord onScreen:(CGPoint)screenPt
+- (void)maplyViewController:(MaplyViewController *)viewC
+                  allSelect:(NSArray *)selectedObjs
+                      atLoc:(MaplyCoordinate)coord
+                   onScreen:(CGPoint)screenPt
 {
-    [self handleSelection:selectedObjs];
+    [self handleSelection:selectedObjs atLoc:coord onScreen:screenPt];
 }
 
 - (void)maplyViewController:(MaplyViewController *)viewC didTapAt:(MaplyCoordinate)coord
@@ -152,6 +158,12 @@
 
 - (void)handleSelection:(id)selectedObjs
 {
+}
+
+- (void)handleSelection:(id)selectedObjs atLoc:(MaplyCoordinate)coord onScreen:(CGPoint)screenPt
+{
+    [self handleSelection:selectedObjs];
+
     // If we've currently got a selected view, get rid of it
     //    if (selectedViewTrack)
     //    {

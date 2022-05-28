@@ -3,7 +3,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 5/16/19.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -103,7 +103,7 @@ BasicDrawableRef BasicDrawableBuilderMTL::getDrawable()
         VertexAttributeMTL *ptsAttr = (VertexAttributeMTL *)basicDraw->vertexAttributes[ptsIndex];
         ptsAttr->slot = WhirlyKitShader::WKSVertexPositionAttribute;
         ptsAttr->reserve(points.size());
-        for (auto pt : points)
+        for (const auto &pt : points)
             ptsAttr->addVector3f(pt);
         draw->tris = tris;
         
@@ -117,7 +117,7 @@ BasicDrawableRef BasicDrawableBuilderMTL::getDrawable()
                 FloatExpressionToMtl(opacityExp, vecExp.opacityExp);
             
             BasicDrawable::UniformBlock uniBlock;
-            uniBlock.blockData = RawDataRef(new RawNSDataReader([[NSData alloc] initWithBytes:&vecExp length:sizeof(vecExp)]));
+            uniBlock.blockData = std::make_shared<RawNSDataReader>([[NSData alloc] initWithBytes:&vecExp length:sizeof(vecExp)]);
             uniBlock.bufferID = WhirlyKitShader::WKSUniformVecEntryExp;
             basicDraw->setUniBlock(uniBlock);
         }

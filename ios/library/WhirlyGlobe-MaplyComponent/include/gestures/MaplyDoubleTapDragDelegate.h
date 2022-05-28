@@ -1,9 +1,7 @@
-/*
- *  MaplyDoubleTapDragDelegate.h
- *
+/*  MaplyDoubleTapDragDelegate.h
  *
  *  Created by Steve Gifford on 2/7/14.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,21 +13,10 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- *
  */
 
-#import <Foundation/Foundation.h>
-#import "MapView_iOS.h"
-#import "gestures/MaplyZoomGestureDelegate.h"
-
-// Sent out when the double tap delegate takes control
-#define kMaplyDoubleTapDragDidStart @"WKMaplyDoubleTapDragStarted"
-// Sent out when the double tap delegate finished (but hands off to momentum)
-#define kMaplyDoubleTapDragDidEnd @"WKMaplyDoubleTapDragEnded"
+#import <WhirlyGlobe/MaplyZoomGestureDelegate.h>
 
 @interface MaplyDoubleTapDragDelegate : MaplyZoomGestureDelegate
-
-/// Create a 2 finger tap gesture and a delegate and wire them up to the given UIView
-+ (MaplyDoubleTapDragDelegate *)doubleTapDragDelegateForView:(UIView *)view mapView:(Maply::MapView_iOSRef)mapView;
 
 @end

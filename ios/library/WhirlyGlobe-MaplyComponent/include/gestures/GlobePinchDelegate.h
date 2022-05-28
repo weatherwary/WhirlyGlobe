@@ -1,9 +1,8 @@
-/*
- *  PinchDelegateFixed.h
+/*  GlobePinchDelegate.h
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 8/22/12.
- *  Copyright 2012-2019 mousebird consulting
+ *  Copyright 2012-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,12 +14,9 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- *
  */
 
 #import <UIKit/UIKit.h>
-#import "GlobeView_iOS.h"
-#import "GlobeAnimateHeight.h"
 
 @class WhirlyGlobeRotateDelegate;
 
@@ -41,10 +37,6 @@
 /// If set we're cooperating with the rotation delegate (HACK!)
 @property (nonatomic,weak) WhirlyGlobeRotateDelegate *rotateDelegate;
 
-/// Create a pinch gesture and a delegate and wire them up to the given UIView
-/// Also need the view parameters in WhirlyGlobeView
-+ (WhirlyGlobePinchDelegate *)pinchDelegateForView:(UIView *)view globeView:(WhirlyGlobe::GlobeView_iOSRef)globeView;
-
 /// If set, we'll zoom around the pinch, rather than the center of the view
 @property (nonatomic,assign) bool zoomAroundPinch;
 
@@ -58,9 +50,6 @@
 @property (nonatomic,assign) bool northUp;
 
 @property (nonatomic,weak) UIGestureRecognizer *gestureRecognizer;
-
-// If set, we calculate the tilt every time we update
-@property (nonatomic) WhirlyGlobe::TiltCalculatorRef tiltDelegate;
 
 // If set, we'll keep track up rather than north up
 - (void)setTrackUp:(double)trackUp;

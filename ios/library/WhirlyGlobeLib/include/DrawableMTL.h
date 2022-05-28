@@ -3,7 +3,7 @@
 *  WhirlyGlobeLib
 *
 *  Created by Steve Gifford on 9/30/19.
-*  Copyright 2011-2019 mousebird consulting
+*  Copyright 2011-2022 mousebird consulting
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -76,8 +76,8 @@ public:
     BufferEntryMTL &getBuffer() { return buff; }
 
     // False if this failed to set up correctly
-    bool isValid();
-    
+    bool isValid() const { return valid; }
+
 protected:
     bool valid;
     bool isSetup;

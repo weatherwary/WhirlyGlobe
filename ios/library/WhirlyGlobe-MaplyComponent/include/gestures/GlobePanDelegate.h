@@ -1,9 +1,9 @@
 /*
- *  PanDelegateFixed.h
+ *  GlobePanDelegate.h
  *  WhirlyGlobeApp
  *
  *  Created by Stephen Gifford on 4/28/11.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
  */
 
 #import <UIKit/UIKit.h>
-#import "WhirlyGlobe_iOS.h"
 
 // Sent out when the pan delegate takes control
 #define kPanDelegateDidStart @"WKPanDelegateStarted"
@@ -43,8 +42,6 @@
 @interface WhirlyGlobePanDelegate : NSObject<UIGestureRecognizerDelegate>
 
 @property(nonatomic,assign) bool northUp;
-
-+ (WhirlyGlobePanDelegate *)panDelegateForView:(UIView *)view globeView:(WhirlyGlobe::GlobeView_iOSRef)globeView useCustomPanRecognizer:(bool)useCustomPanRecognizer;
 
 @property (nonatomic,weak) UIGestureRecognizer *gestureRecognizer;
 

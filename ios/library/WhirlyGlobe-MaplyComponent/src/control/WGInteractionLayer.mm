@@ -1,9 +1,8 @@
-/*
- *  WGInteractionLayer_private.h
+/*  WGInteractionLayer_private.h
  *  WhirlyGlobeComponent
  *
  *  Created by Steve Gifford on 7/21/12.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,7 +14,6 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- *
  */
 
 #import "WGInteractionLayer_private.h"
@@ -23,10 +21,12 @@
 #import "visual_objects/MaplyMarker.h"
 #import "visual_objects/MaplyScreenLabel.h"
 #import "visual_objects/MaplyLabel.h"
-#import "MaplyVectorObject_private.h"
 #import "visual_objects/MaplyShape.h"
 #import "visual_objects/MaplySticker.h"
+#import "private/MaplyVectorObject_private.h"
 #import "math/MaplyCoordinate.h"
+#import "gestures/GlobeTapMessage.h"
+#import "private/GlobeTapMessage_private.h"
 
 using namespace Eigen;
 using namespace WhirlyKit;
@@ -107,7 +107,7 @@ using namespace WhirlyGlobe;
 
 // Do the logic for a selection
 // Runs in the layer thread
-- (void) userDidTapLayerThread:(WhirlyGlobeTapMessage *)msg
+- (void)userDidTapLayerThread:(WhirlyGlobeTapMessage *)msg
 {
     lastTouched = scene->getCurrentTime();
     if (autoSpinner)
@@ -124,15 +124,7 @@ using namespace WhirlyGlobe;
     
     // Next, try the vectors
     NSArray *vecObjs = [self findVectorsInPoint:Point2f(msg.whereGeo.x(),msg.whereGeo.y()) inView:(MaplyBaseViewController*)self.viewController multi:true];
-    for (MaplyVectorObject *vecObj in vecObjs)
-    {
-        MaplySelectedObject *selObj = [[MaplySelectedObject alloc] init];
-        selObj.selectedObj = vecObj;
-        selObj.screenDist = 0.0;
-        // Note: Not quite right
-        selObj.zDist = 0.0;
-        [retSelectArr addObject:selObj];
-    }
+    [retSelectArr addObjectsFromArray:[self convertSelectedVecObjects:vecObjs]];
     
     // Tell the view controller about it
     dispatch_async(dispatch_get_main_queue(),^
@@ -143,16 +135,10 @@ using namespace WhirlyGlobe;
 }
 
 // Check for a selection
-- (void) userDidTap:(WhirlyGlobeTapMessage *)msg
+- (void)userDidTap:(WhirlyGlobeTapMessage *)msg
 {
     // Pass it off to the layer thread
     [self performSelector:@selector(userDidTapLayerThread:) onThread:layerThread withObject:msg waitUntilDone:NO];
-}
-
-
-
-- (NSObject*)selectLabelsAndMarkerForScreenPoint:(CGPoint)screenPoint {
-    return [[self selectMultipleLabelsAndMarkersForScreenPoint:screenPoint] firstObject];
 }
 
 - (NSMutableArray*)selectMultipleLabelsAndMarkersForScreenPoint:(CGPoint)screenPoint
@@ -160,32 +146,8 @@ using namespace WhirlyGlobe;
     SelectionManagerRef selectManager = std::dynamic_pointer_cast<SelectionManager>(scene->getManager(kWKSelectionManager));
     std::vector<SelectionManager::SelectedObject> selectedObjs;
     selectManager->pickObjects(Point2f(screenPoint.x,screenPoint.y),10.0,globeView->makeViewState(layerThread.renderer),selectedObjs);
-    
-    NSMutableArray *retSelectArr = [NSMutableArray array];
-    if (!selectedObjs.empty())
-    {
-        // Work through the objects the manager found, creating entries for each
-        for (unsigned int ii=0;ii<selectedObjs.size();ii++)
-        {
-            SelectionManager::SelectedObject &theSelObj = selectedObjs[ii];
-            
-            for (auto selectID : theSelObj.selectIDs)
-            {
-                MaplySelectedObject *selObj = [[MaplySelectedObject alloc] init];
-                selObj.selectedObj = compManager->getSelectObject(selectID);
-                
-                selObj.screenDist = theSelObj.screenDist;
-                selObj.cluster = theSelObj.isCluster;
-                selObj.zDist = theSelObj.distIn3D;
-                
-                if (selObj.selectedObj)
-                    [retSelectArr addObject:selObj];
-            }
-        }
-    }
-    
-    return retSelectArr;
-}
 
+    return [self convertSelectedObjects:selectedObjs];
+}
 
 @end

@@ -2,7 +2,7 @@
  *  MaplyComponent
  *
  *  Created by Steve Gifford on 12/14/12.
- *  Copyright 2012-2021 mousebird consulting
+ *  Copyright 2012-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -18,29 +18,30 @@
 
 #import <UIKit/UIKit.h>
 #import <Metal/Metal.h>
-#import "math/MaplyCoordinate.h"
-#import "visual_objects/MaplyScreenMarker.h"
-#import "visual_objects/MaplyVectorObject.h"
-#import "control/MaplyViewTracker.h"
-#import "visual_objects/MaplyComponentObject.h"
-#import "MaplySharedAttributes.h"
-#import "control/MaplyControllerLayer.h"
-#import "rendering/MaplyLight.h"
-#import "rendering/MaplyShader.h"
-#import "control/MaplyActiveObject.h"
-#import "visual_objects/MaplyTexture.h"
-#import "control/MaplyAnnotation.h"
-#import "visual_objects/MaplyParticleSystem.h"
-#import "visual_objects/MaplyPoints.h"
-#import "visual_objects/MaplyCluster.h"
-#import "gestures/Maply3DTouchPreviewDatasource.h"
-#import "helpers/MaplyLocationTracker.h"
-#import "rendering/MaplyRenderTarget.h"
-#import "control/MaplyRenderController.h"
-#import "loading/MaplyRemoteTileFetcher.h"
-#import "rendering/MaplyVertexAttribute.h"
+#import <WhirlyGlobe/MaplyCoordinate.h>
+#import <WhirlyGlobe/MaplyScreenMarker.h>
+#import <WhirlyGlobe/MaplyVectorObject.h>
+#import <WhirlyGlobe/MaplyViewTracker.h>
+#import <WhirlyGlobe/MaplyComponentObject.h>
+#import <WhirlyGlobe/MaplySharedAttributes.h>
+#import <WhirlyGlobe/MaplyControllerLayer.h>
+#import <WhirlyGlobe/MaplyLight.h>
+#import <WhirlyGlobe/MaplyShader.h>
+#import <WhirlyGlobe/MaplyActiveObject.h>
+#import <WhirlyGlobe/MaplyTexture.h>
+#import <WhirlyGlobe/MaplyAnnotation.h>
+#import <WhirlyGlobe/MaplyParticleSystem.h>
+#import <WhirlyGlobe/MaplyPoints.h>
+#import <WhirlyGlobe/MaplyCluster.h>
+#import <WhirlyGlobe/Maply3DTouchPreviewDatasource.h>
+#import <WhirlyGlobe/MaplyLocationTracker.h>
+#import <WhirlyGlobe/MaplyRenderTarget.h>
+#import <WhirlyGlobe/MaplyRenderController.h>
+#import <WhirlyGlobe/MaplyRemoteTileFetcher.h>
+#import <WhirlyGlobe/MaplyVertexAttribute.h>
 
 typedef double (^ZoomEasingBlock)(double z0,double z1,double t);
+typedef void (__strong ^InitCompletionBlock)(void);
 
 /** 
     When selecting multiple objects, one or more of these is returned.
@@ -1293,6 +1294,15 @@ typedef double (^ZoomEasingBlock)(double z0,double z1,double t);
   */
 - (MaplyCoordinate3dD)displayPointFromGeoD:(MaplyCoordinate)geoCoord;
 
+/**
+    Utility routine to convert from a lat/lon (in radians) to display coordinates
+    
+    This is a simple routine to get display coordinates from geocoordinates.  Display coordinates for the globe are based on a radius of 1.0 and an origin of (0,0,0).
+    
+    @return The input coordinate in display coordinates.
+  */
+- (MaplyCoordinate3dD)displayPointFromGeoDD:(MaplyCoordinateD)geoCoord;
+
 /** 
     If you've paused the animation earlier, this will start it again.
     
@@ -1338,7 +1348,7 @@ typedef double (^ZoomEasingBlock)(double z0,double z1,double t);
     
     @return Returns the registered shader if it found one.
   */
-- (MaplyShader *__nullable)getShaderByName:(NSString *__nonnull)name;
+- (MaplyShader *__nullable)getShaderByName:(const NSString *__nonnull)name;
 
 /**
     Remove a shader that was added earlier.
@@ -1453,13 +1463,22 @@ typedef double (^ZoomEasingBlock)(double z0,double z1,double t);
 - (void)disable3dTouchSelection;
 
 /** 
-    Return all the selectable objects at the given location.
+    Return all the selectable vector objects at the given location.
     
     Objects can be selected via the delegate or the search can be run directly here.
     
     This is not thread safe and will block the main thread.
   */
 - (NSArray * _Nullable)objectsAtCoord:(MaplyCoordinate)coord;
+
+/**
+    Return all the selectable labels and markers at the given location.
+
+    Objects can be selected via the delegate or the search can be run directly here.
+
+    This is not thread safe and will block the main thread.
+ */
+- (NSArray * _Nullable)labelsAndMarkersAtCoord:(MaplyCoordinate)coord;
 
 /// Turn on/off performance output (goes to the log periodically).
 @property (nonatomic,assign) bool performanceOutput;
@@ -1553,5 +1572,20 @@ typedef double (^ZoomEasingBlock)(double z0,double z1,double t);
 
 /// Return the renderer type being used
 - (MaplyRenderType)getRenderType;
+
+/**
+    Blocks to be called after the view is set up, or immediately if it is already set up.
+    Similar to `addPostSurfaceRunnable` on Android.
+*/
+- (void)addPostInitBlock:(_Nonnull InitCompletionBlock)block;
+
+/// Set up a zoom slot that doesn't depend on a loader
+- (int)retainZoomSlotMinZoom:(double)minZoom
+                   maxHeight:(double)maxHeight
+                     maxZoom:(double)maxZoom
+                   minHeight:(double)minHeight;
+
+/// Release a zoom slot previously retained
+- (void)releaseZoomSlotIndex:(int)index;
 
 @end

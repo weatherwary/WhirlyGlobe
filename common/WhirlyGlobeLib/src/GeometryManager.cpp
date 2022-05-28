@@ -1,9 +1,8 @@
-/*
- *  GeometryManager.mm
+/*  GeometryManager.cpp
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 11/25/15.
- *  Copyright 2012-2015 mousebird consulting
+ *  Copyright 2012-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,7 +14,6 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- *
  */
 
 #import "GeometryManager.h"
@@ -23,17 +21,13 @@
 #import "BaseInfo.h"
 #import "BasicDrawableInstanceBuilder.h"
 #import "SharedAttributes.h"
+#import "WhirlyKitLog.h"
 
 using namespace Eigen;
 using namespace WhirlyKit;
 
 namespace WhirlyKit
 {
-    
-GeometryInfo::GeometryInfo()
-: colorOverride(false), color(255,255,255,255), boundingBox(GeometryBBoxNone), pointSize(1.0)
-{    
-}
 
 GeometryInfo::GeometryInfo(const Dictionary &dict)
     : BaseInfo(dict)
@@ -43,36 +37,44 @@ GeometryInfo::GeometryInfo(const Dictionary &dict)
         zBufferRead = true;
     if (!dict.hasField(MaplyZBufferWrite))
         zBufferWrite = false;
+
     colorOverride = dict.hasField(MaplyColor);
-    color = dict.getColor(MaplyColor, RGBAColor(255,255,255,255));
-    std::string bboxVal = dict.getString(MaplyGeomBoundingBox,"");
+    color = dict.getColor(MaplyColor, color);
+
+    const std::string bboxVal = dict.getString(MaplyGeomBoundingBox,"");
     if (bboxVal == MaplyGeomBoundingBoxSingle)
     {
         boundingBox = GeometryBBoxSingle;
-    } else if (bboxVal == MaplyGeomBoundingBoxTriangle) {
+    }
+    else if (bboxVal == MaplyGeomBoundingBoxTriangle)
+    {
         boundingBox = GeometryBBoxTriangle;
-    } else {
-        boundingBox = GeometryBBoxNone;
     }
     pointSize = dict.getDouble(MaplyGeomPointSize,1.0);
 }
 
 void GeomSceneRep::clearContents(SelectionManagerRef &selectManager,ChangeSet &changes,TimeInterval when)
 {
-    for (SimpleIDSet::iterator it = drawIDs.begin();
-         it != drawIDs.end(); ++it)
-        changes.push_back(new RemDrawableReq(*it,when));
+    for (const auto id : drawIDs)
+    {
+        changes.push_back(new RemDrawableReq(id,when));
+    }
     if (selectManager && !selectIDs.empty())
+    {
         selectManager->removeSelectables(selectIDs);
+    }
 }
 
 void GeomSceneRep::enableContents(SelectionManagerRef &selectManager,bool enable,ChangeSet &changes)
 {
-    for (SimpleIDSet::iterator it = drawIDs.begin();
-         it != drawIDs.end(); ++it)
-        changes.push_back(new OnOffChangeRequest(*it, enable));
+    for (const auto id : drawIDs)
+    {
+        changes.push_back(new OnOffChangeRequest(id, enable));
+    }
     if (selectManager && !selectIDs.empty())
+    {
         selectManager->enableSelectables(selectIDs, enable);
+    }
 }
     
 GeometryRaw::GeometryRaw()
@@ -192,23 +194,23 @@ void GeometryRaw::buildDrawables(std::vector<BasicDrawableBuilderRef> &draws,con
         int baseVert = draw->getNumPoints();
         for (unsigned int jj=0;jj<3;jj++)
         {
-            const Point3d &pt = pts[tri.verts[jj]];
+            const int vjj = tri.verts[jj];
+            const Point3d &pt = pts[vjj];
             Vector4d outPt = mat * Eigen::Vector4d(pt.x(),pt.y(),pt.z(),1.0);
             Point3d newPt(outPt.x()/outPt.w(),outPt.y()/outPt.w(),outPt.z()/outPt.w());
             draw->addPoint(newPt);
             if (!norms.empty())
             {
-                const Point3d &norm = norms[tri.verts[jj]];
+                const Point3d &norm = norms[vjj];
                 // Note: Not the right way to transform normals
                 Vector4d projNorm = mat * Eigen::Vector4d(norm.x(),norm.y(),norm.z(),0.0);
                 Point3d newNorm(projNorm.x(),projNorm.y(),projNorm.z());
                 newNorm.normalize();
                 draw->addNormal(newNorm);
             }
-            if (!texCoords.empty())
-                draw->addTexCoord(0,texCoords[tri.verts[jj]]);
+            draw->addTexCoord(0, (vjj < texCoords.size()) ? texCoords[vjj] : TexCoord(0,0));
             if (!colors.empty() && !colorOverride)
-                draw->addColor(colors[tri.verts[jj]]);
+                draw->addColor(colors[vjj]);
         }
         
         draw->addTriangle(BasicDrawable::Triangle(baseVert,baseVert+1,baseVert+2));
@@ -613,19 +615,20 @@ void GeometryRawPoints::buildDrawables(std::vector<BasicDrawableBuilderRef> &dra
     }
 }
 
-    
-GeometryManager::GeometryManager()
-{
-}
-    
 GeometryManager::~GeometryManager()
 {
-    std::lock_guard<std::mutex> guardLock(lock);
+    // destructors must not throw
+    try
+    {
+        std::lock_guard<std::mutex> guardLock(lock);
 
-    for (GeomSceneRepSet::iterator it = sceneReps.begin();
-         it != sceneReps.end(); ++it)
-        delete *it;
-    sceneReps.clear();
+        auto reps = std::move(sceneReps);
+        for (auto &rep : reps)
+        {
+            delete rep;
+        }
+    }
+    WK_STD_DTOR_CATCH()
 }
     
 SimpleIdentity GeometryManager::addGeometry(std::vector<GeometryRaw *> &geom,const std::vector<GeometryInstance *> &instances,GeometryInfo &geomInfo,ChangeSet &changes)
@@ -819,8 +822,13 @@ SimpleIdentity GeometryManager::addGeometryInstances(SimpleIdentity baseGeomID,c
     // Check for moving models
     bool hasMotion = false;
     for (const GeometryInstance &inst : instances)
+    {
         if (inst.duration > 0.0)
+        {
             hasMotion = true;
+            break;
+        }
+    }
     
     // Work through the model instances
     std::vector<BasicDrawableInstance::SingleInstance> singleInsts;

@@ -3,15 +3,11 @@
 //  AutoTester
 //
 //  Created by jmnavarro on 2/11/15.
-//  Copyright © 2015-2021 mousebird consulting.
+//  Copyright 2015-2022 mousebird consulting.
 //
 
 #import "LabelsTestCase.h"
-#import "MaplyBaseViewController.h"
-#import "MaplyLabel.h"
 #import "VectorsTestCase.h"
-#import "WhirlyGlobeViewController.h"
-#import "MaplyViewController.h"
 
 @implementation LabelsTestCase
 

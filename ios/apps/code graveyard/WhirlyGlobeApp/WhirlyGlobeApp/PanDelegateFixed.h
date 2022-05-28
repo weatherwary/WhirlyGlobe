@@ -3,7 +3,7 @@
  *  WhirlyGlobeApp
  *
  *  Created by Stephen Gifford on 4/28/11.
- *  Copyright 2011-2012 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
  */
 
 #import <Foundation/Foundation.h>
-#import "WhirlyGlobe.h"
+#import "WhirlyGlobeLib.h"
 
 // Kind of panning we're in the middle of
 typedef enum {PanNone,PanFree,PanSuspended} PanningType;

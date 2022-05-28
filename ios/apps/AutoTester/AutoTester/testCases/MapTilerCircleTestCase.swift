@@ -3,9 +3,10 @@
 //  AutoTester
 //
 //  Created by Tim Sylvester on 3/23/21.
-//  Copyright © 2021 mousebird consulting. All rights reserved.
+//  Copyright 2021-2022 mousebird consulting. All rights reserved.
 //
 import UIKit
+import WhirlyGlobe
 
 class MapTilerCircleTestCase: MapTilerTestCase {
 

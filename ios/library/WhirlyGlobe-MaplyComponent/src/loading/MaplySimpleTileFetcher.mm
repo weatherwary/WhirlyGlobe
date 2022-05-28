@@ -3,7 +3,7 @@
  *  WhirlyGlobe-MaplyComponent
  *
  *  Created by Steve Gifford on 5/31/19.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
  */
 
 #import "MaplySimpleTileFetcher.h"
-#import "WhirlyGlobe.h"
+#import "WhirlyGlobeLib.h"
 
 using namespace WhirlyKit;
 
@@ -223,7 +223,7 @@ typedef std::map<MaplyTileFetchRequest *,TileInfoRef> TileFetchMap;
 
 - (void)startTileFetches:(NSArray<MaplyTileFetchRequest *> * _Nonnull)requests
 {
-    if (!active)
+    if (!active || !requests.count)
         return;
     
     // Check each of the fetchInfo objects
@@ -251,7 +251,7 @@ typedef std::map<MaplyTileFetchRequest *,TileInfoRef> TileFetchMap;
 
 - (void)cancelTileFetches:(NSArray * _Nonnull)requests
 {
-    if (!active)
+    if (!active || !requests.count)
         return;
     
     dispatch_async(self.queue, ^{

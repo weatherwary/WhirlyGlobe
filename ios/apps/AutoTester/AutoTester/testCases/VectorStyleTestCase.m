@@ -3,11 +3,11 @@
 //  AutoTester
 //
 //  Created by Steve Gifford on 8/12/16.
-//  Copyright © 2016-2017 mousebird consulting.
+//  Copyright 2016-2022 mousebird consulting.
 //
 
 #import "VectorStyleTestCase.h"
-#import "AutoTester-Swift.h"
+#import "SwiftBridge.h"
 
 @implementation VectorStyleTestCase
 {

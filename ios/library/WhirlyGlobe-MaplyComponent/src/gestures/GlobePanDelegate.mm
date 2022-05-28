@@ -1,9 +1,9 @@
 /*
- *  PanDelegateFixed.m
+ *  GlobePanDelegate.mm
  *  WhirlyGlobeApp
  *
  *  Created by Stephen Gifford on 4/28/11.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -18,8 +18,9 @@
  *
  */
 
-#import "gestures/GlobePanDelegate.h"
 #import <UIKit/UIGestureRecognizerSubclass.h>
+#import "GlobePanDelegate.h"
+#import "GlobePanDelegate_private.h"
 #import "ViewWrapper.h"
 
 using namespace Eigen;
@@ -47,6 +48,10 @@ typedef enum {PanNone,PanFree,PanSuspended} PanningType;
     self.state = UIGestureRecognizerStateEnded;
 }
 
+@end
+
+@interface WhirlyGlobePanDelegate ()
++ (WhirlyGlobePanDelegate *)panDelegateForView:(UIView *)view globeView:(WhirlyGlobe::GlobeView_iOSRef)globeView useCustomPanRecognizer:(bool)useCustomPanRecognizer;
 @end
 
 @implementation WhirlyGlobePanDelegate

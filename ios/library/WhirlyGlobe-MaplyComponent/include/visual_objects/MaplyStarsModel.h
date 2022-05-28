@@ -2,7 +2,7 @@
  *  WhirlyGlobe-MaplyComponent
  *
  *  Created by Steve Gifford on 6/4/15.
- *  Copyright 2011-2021 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@
  */
 
 #import <UIKit/UIKit.h>
-#import "visual_objects/MaplyComponentObject.h"
-#import "control/WhirlyGlobeViewController.h"
+#import <WhirlyGlobe/MaplyComponentObject.h>
+#import <WhirlyGlobe/WhirlyGlobeViewController.h>
 
 /** 
     The Stars Model parses and then displays a star field.

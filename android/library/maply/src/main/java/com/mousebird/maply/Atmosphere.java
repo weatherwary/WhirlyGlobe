@@ -3,7 +3,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by jmnavarro
- *  Copyright 2011-2016 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import java.util.List;
 /** Sets up the objects and shaders to implement an atmosphere.
  * <br>
  * This object sets up a shader implementation of the simple atmosphere from GPU Gems 2
- * http://http.developer.nvidia.com/GPUGems2/gpugems2_chapter16.html
+ * https://developer.nvidia.com/gpugems/gpugems2/part-ii-shading-lighting-and-shadows/chapter-16-accurate-atmospheric-scattering
  */
 public class Atmosphere {
 

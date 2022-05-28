@@ -1,9 +1,8 @@
-/*
- *  ChangeRequest.h
+/*  ChangeRequest.h
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 5/8/19.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,7 +14,6 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- *
  */
 
 #import <vector>
@@ -58,7 +56,7 @@ typedef std::shared_ptr<RenderTeardownInfo> RenderTeardownInfoRef;
 class Scene;
 class SceneRenderer;
     
-/** This is the base clase for a change request.  Change requests
+/** This is the base class for a change request.  Change requests
  are how we modify things in the scene.  The renderer is running
  on the main thread and we want to keep our interaction with it
  very simple.  So instead of deleting things or modifying them
@@ -67,8 +65,8 @@ class SceneRenderer;
 class ChangeRequest
 {
 public:
-    ChangeRequest();
-    virtual ~ChangeRequest();
+    ChangeRequest() = default;
+    virtual ~ChangeRequest() = default;
     
     /// Return true if this change requires a GL Flush in the thread it was executed in
     virtual bool needsFlush();
@@ -81,14 +79,16 @@ public:
     
     /// Set this if you need to be run before the active models are run
     virtual bool needPreExecute();
-    
+
     /// If non-zero we'll execute this request after the given absolute time
-    TimeInterval when;
+    TimeInterval when = 0.0;
 };
 
 /// Representation of a list of changes.  Might get more complex in the future.
 typedef std::vector<ChangeRequest *> ChangeSet;
 typedef std::shared_ptr<ChangeSet> ChangeSetRef;
+
+void discardChanges(ChangeSet &changes);
 
 typedef struct ChangeSorter
 {

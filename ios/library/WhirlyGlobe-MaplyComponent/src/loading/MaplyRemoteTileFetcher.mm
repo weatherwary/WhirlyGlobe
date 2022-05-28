@@ -20,7 +20,7 @@
 
 #import "loading/MaplyRemoteTileFetcher.h"
 #import "MaplyRenderController_private.h"
-
+#import "MaplyURLSessionManager+Private.h"
 namespace WhirlyKit
 {
 
@@ -419,19 +419,19 @@ using namespace WhirlyKit;
     _numConnections = numConnections;
     // All the internal work is done on a single queue.  Nothing significant, really.
     queue = dispatch_queue_create("MaplyRemoteTileFetcher", DISPATCH_QUEUE_SERIAL);
-    session = [NSURLSession sharedSession];
+    session = [[MaplyURLSessionManager sharedManager] createURLSession];
     allStats = [[MaplyRemoteTileFetcherStats alloc] initWithFetcher:self];
     recentStats = [[MaplyRemoteTileFetcherStats alloc] initWithFetcher:self];
             
     return self;
 }
 
-- (void)setLocalStorage:(NSObject<MaplyTileLocalStorage> * __nonnull)inLocalStorage
+- (void)setLocalStorage:(NSObject<MaplyTileLocalStorage> *)inLocalStorage
 {
     localStorage = inLocalStorage;
 }
 
-- (void)setSecondChance:(NSObject<MaplyTileSecondChance> * __nonnull)inSecondChance
+- (void)setSecondChance:(NSObject<MaplyTileSecondChance> *)inSecondChance
 {
     secondChance = inSecondChance;
 }

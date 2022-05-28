@@ -3,10 +3,11 @@
 //  AutoTester
 //
 //  Created by Ranen Ghosh on 2016-12-23.
-//  Copyright © 2016-2017 mousebird consulting.
+//  Copyright 2016-2022 mousebird consulting.
 //
 
 import UIKit
+import WhirlyGlobe
 
 class GeoJSONStyleTestCase: MaplyTestCase {
     

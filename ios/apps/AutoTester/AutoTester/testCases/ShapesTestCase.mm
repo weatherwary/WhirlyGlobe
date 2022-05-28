@@ -3,18 +3,15 @@
 //  AutoTester
 //
 //  Created by jmnavarro on 3/11/15.
-//  Copyright © 2015-2017 mousebird consulting.
+//  Copyright 2015-2022 mousebird consulting.
 //
 
 #import "ShapesTestCase.h"
-#import "MaplyShape.h"
-#import "MaplyBaseViewController.h"
-#import "MaplyGeomModel.h"
-#import "MaplyMatrix.h"
-#import "MaplyViewController.h"
-#import "AutoTester-Swift.h"
+#import "SwiftBridge.h"
 
-#import "../../../common/WhirlyGlobeLib/include/WhirlyVector.h"
+#import "WhirlyVector.h"
+
+#import <vector>
 
 // Simple representation of locations and name for testing
 typedef struct

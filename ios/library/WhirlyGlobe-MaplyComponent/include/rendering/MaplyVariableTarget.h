@@ -3,7 +3,7 @@
  *  WhirlyGlobe-MaplyComponent
  *
  *  Created by Steve Gifford on 9/18/18.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -19,9 +19,9 @@
  */
 
 #import <UIKit/UIKit.h>
-#import "visual_objects/MaplyTexture.h"
-#import "rendering/MaplyRenderTarget.h"
-#import "control/MaplyRenderController.h"
+#import <WhirlyGlobe/MaplyTexture.h>
+#import <WhirlyGlobe/MaplyRenderTarget.h>
+#import <WhirlyGlobe/MaplyRenderController.h>
 
 /**
     A variable target manages two pass rendering for one type of variable.

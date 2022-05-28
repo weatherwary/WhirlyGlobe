@@ -3,7 +3,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 7/30/13.
- *  Copyright 2011-2019 mousebird consulting.
+ *  Copyright 2011-2022 mousebird consulting.
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -60,15 +60,13 @@ typedef std::shared_ptr<LoftedPolyInfo> LoftedPolyInfoRef;
 /** Representation of one or more lofted polygons.
  Used to keep track of the assets we create.
  */
-class LoftedPolySceneRep : public WhirlyKit::Identifiable
+struct LoftedPolySceneRep : public WhirlyKit::Identifiable
 {
-public:
-    LoftedPolySceneRep() { }
+    LoftedPolySceneRep() = default;
     LoftedPolySceneRep(SimpleIdentity theId) : Identifiable(theId) { }
-    ~LoftedPolySceneRep() { }
     
     WhirlyKit::SimpleIDSet drawIDs;  // Drawables created for this
-    float fade;            // Fade out, used for delete
+    float fadeOut = 0.0;            // Fade out, used for delete
 };
 typedef std::set<LoftedPolySceneRep *,IdentifiableSorter> LoftedPolySceneRepSet;
 

@@ -2,7 +2,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by sjg
- *  Copyright 2011-2021 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -33,9 +33,9 @@ JNIEXPORT void JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_nativeInit(
 }
 
 extern "C"
-JNIEXPORT void JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_initialise
-(JNIEnv *env, jobject obj, jobject sceneObj, jobject coordSysObj,
- jobject settingsObj, jobject attrObj)
+JNIEXPORT jboolean JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_initialise
+    (JNIEnv *env, jobject obj, jobject sceneObj, jobject coordSysObj,
+     jobject settingsObj, jobject attrObj)
 {
     try
     {
@@ -43,7 +43,7 @@ JNIEXPORT void JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_initialise
         CoordSystemRef *coordSystem = CoordSystemRefClassInfo::get(env,coordSysObj);
         MutableDictionary_AndroidRef *attrDict = AttrDictClassInfo::get(env,attrObj);
         if (!scene || !coordSystem || !attrDict)
-            return;
+            return false;
 
         // Use settings or provide a default
         VectorStyleSettingsImplRef settings;
@@ -52,6 +52,9 @@ JNIEXPORT void JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_initialise
         } else {
             settings = std::make_shared<VectorStyleSettingsImpl>(1.0);
         }
+
+        // Performance wide vectors aren't yet supported on OpenGL
+        settings->perfWideVec = false;
 
         auto inst = new MapboxVectorStyleSetImpl_AndroidRef(
                 std::make_shared<MapboxVectorStyleSetImpl_Android>(scene,coordSystem->get(),settings));
@@ -67,15 +70,17 @@ JNIEXPORT void JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_initialise
         {
             __android_log_print(ANDROID_LOG_WARN, "Maply", "Failed to parse attrs in MapboxVectorStyleSet::initialise()");
         }
+        return success;
     }
     MAPLY_STD_JNI_CATCH()
+    return false;
 }
 
 static std::mutex disposeMutex;
 
 extern "C"
 JNIEXPORT void JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_dispose
-(JNIEnv *env, jobject obj)
+    (JNIEnv *env, jobject obj)
 {
     try
     {
@@ -103,7 +108,7 @@ JNIEXPORT jboolean JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_hasBack
         if (const auto inst = MapboxVectorStyleSetClassInfo::get(env,obj))
         {
             PlatformInfo_Android platformInfo(env);
-            if (const auto style = (*inst)->backgroundStyle(&platformInfo))
+            if (/*const auto style = */(*inst)->backgroundStyle(&platformInfo))
             {
                 return true;
             }
@@ -138,7 +143,8 @@ JNIEXPORT jint JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_backgroundC
 
 extern "C"
 JNIEXPORT jobjectArray JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_stylesForFeature
-        (JNIEnv *, jobject, jobject attrs, jobject tileID, jstring featureName, jobject control)
+        (JNIEnv *, jobject /*obj*/, jobject /*attrs*/,
+         jobject /*tileID*/, jstring /*featureName*/, jobject /*control*/)
 {
     try
     {
@@ -185,7 +191,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_all
 
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_layerShouldDisplay
-        (JNIEnv *, jobject, jstring name, jobject tileID)
+        (JNIEnv *, jobject /*obj*/, jstring /*name*/, jobject /*tileID*/)
 {
     try
     {
@@ -198,7 +204,7 @@ JNIEXPORT jboolean JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_layerSh
 
 extern "C"
 JNIEXPORT jobject JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_styleForUUID
-        (JNIEnv *, jobject, jlong uuid, jobject control)
+        (JNIEnv *, jobject /*obj*/, jlong /*uuid*/, jobject /*control*/)
 {
     try
     {
@@ -315,7 +321,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_get
 
 extern "C"
 JNIEXPORT void JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_setLayerVisible
-        (JNIEnv *env, jobject obj, jstring layerNameJava, jboolean visible)
+  (JNIEnv *env, jobject obj, jstring layerNameJava, jboolean visible)
 {
     try
     {
@@ -332,6 +338,48 @@ JNIEXPORT void JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_setLayerVis
         }
     }
     MAPLY_STD_JNI_CATCH()
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_addRepsNative(
+  JNIEnv *env, jobject obj, jstring uuidAttrStr,
+  jobjectArray srcArr, jobjectArray repArr,
+  jobjectArray sizeArr, jobjectArray colorArr)
+{
+    try
+    {
+        if (const auto styleSetRef = MapboxVectorStyleSetClassInfo::get(env,obj))
+        {
+            const JavaString uuidAttr(env, uuidAttrStr);
+            const auto sources = ConvertStringArray(env, srcArr);
+            const auto reps = ConvertStringArray(env, repArr);
+            const auto sizes = ConvertFloatObjArray(env, sizeArr, -1.0f);
+            const auto colors = ConvertStringArray(env, colorArr);
+            if (reps.size() == sizes.size() && sizes.size() == colors.size())
+            {
+                PlatformInfo_Android inst(env);
+                return (*styleSetRef)->addRepresentations(&inst, uuidAttr.getCString(),
+                                                          sources, reps, sizes, colors);
+            }
+        }
+    }
+    MAPLY_STD_JNI_CATCH()
+    return false;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_mousebird_maply_MapboxVectorStyleSet_hasRepresentations(
+  JNIEnv *env, jobject obj)
+{
+    try
+    {
+        if (const auto styleSetRef = MapboxVectorStyleSetClassInfo::get(env,obj))
+        {
+            return (*styleSetRef)->hasRepresentations();
+        }
+    }
+    MAPLY_STD_JNI_CATCH()
+    return false;
 }
 
 extern "C"

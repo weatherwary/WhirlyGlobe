@@ -3,7 +3,7 @@
  *  WhirlyGlobe-MaplyComponent
  *
  *  Created by Steve Gifford on January 24 2018
- *  Copyright 2011-2019 Saildrone
+ *  Copyright 2011-2022 Saildrone
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -20,11 +20,11 @@
 
 
 #import <Foundation/Foundation.h>
-#import "loading/MaplyTileSourceNew.h"
-#import "math/MaplyCoordinate.h"
-#import "vector_styles/MaplyVectorStyle.h"
-#import "vector_tiles/MapboxVectorTiles.h"
-#import "loading/MaplyQuadImageFrameLoader.h"
+#import <WhirlyGlobe/MaplyTileSourceNew.h>
+#import <WhirlyGlobe/MaplyCoordinate.h>
+#import <WhirlyGlobe/MaplyVectorStyle.h>
+#import <WhirlyGlobe/MapboxVectorTiles.h>
+#import <WhirlyGlobe/MaplyQuadImageFrameLoader.h>
 
 @class MapboxVectorStyleSet;
 
