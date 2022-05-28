@@ -2,7 +2,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 10/26/11.
- *  Copyright 2011-2021 mousebird consulting.
+ *  Copyright 2011-2022 mousebird consulting.
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -41,7 +41,14 @@ struct Selectable
 
     Selectable() = default;
     Selectable(SimpleIdentity theID) : selectID(theID) { }
-    
+
+    bool isVisibleAt(double heightAboveSurface) const
+    {
+        return enable && selectID != EmptyIdentity &&
+            (minVis == DrawVisibleInvalid || heightAboveSurface >= minVis) &&
+            (maxVis == DrawVisibleInvalid || heightAboveSurface <= maxVis);
+    }
+
     bool enable = true;
     /// Used to identify this selectable
     SimpleIdentity selectID = EmptyIdentity;
@@ -321,6 +328,8 @@ public:
         
         Point2f frameSize;
         Point2f frameSizeScale;
+
+        /// frame with margin, not scaled
         Mbr frameMbr;
     };
 

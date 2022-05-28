@@ -3,7 +3,7 @@
  *  WhirlyGlobeComponent
  *
  *  Created by Steve Gifford on 1/20/16
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -19,9 +19,9 @@
  */
 
 #import <UIKit/UIKit.h>
-#import "math/MaplyCoordinate.h"
-#import "control/MaplyRenderController.h"
-#import "visual_objects/MaplyGeomModel.h"
+#import <WhirlyGlobe/MaplyCoordinate.h>
+#import <WhirlyGlobe/MaplyRenderController.h>
+#import <WhirlyGlobe/MaplyGeomModel.h>
 
 /** 
     Geometry State is used to describe the visual look of objects as they're added.

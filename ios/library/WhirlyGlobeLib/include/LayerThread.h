@@ -3,7 +3,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 2/1/11.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -79,7 +79,7 @@
 
 /// Layers should send their change requests through here
 /// You can call this from any thread.
-- (void)addChangeRequests:(std::vector<WhirlyKit::ChangeRequest *> &)changeRequests;
+- (void)addChangeRequests:(WhirlyKit::ChangeSet &)changeRequests;
 
 /// Called by a layer to request a flush at the next opportunity.
 /// Presumably the layer did something worth flushing

@@ -2,7 +2,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 2/15/19.
- *  Copyright 2011-2021 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@
 #import "ComponentManager.h"
 #import "WhirlyKitLog.h"
 #import "SharedAttributes.h"
+
+//#define LOG_REPRESENTATIONS
 
 namespace WhirlyKit
 {
@@ -43,10 +45,6 @@ ComponentObject::ComponentObject(bool enable, bool selectable, const Dictionary 
         this->uuid = desc.getString(MaplyUUIDDesc);
         this->representation = desc.getString(MaplyRepresentationDesc);
     }
-}
-
-ComponentObject::~ComponentObject()
-{
 }
 
 void ComponentObject::clear()
@@ -84,7 +82,6 @@ void ComponentManager::setScene(Scene *scene)
     loftManager       = scene ? scene->getManager<LoftManager>(kWKLoftedPolyManager) : nullptr;
     billManager       = scene ? scene->getManager<BillboardManager>(kWKBillboardManager) : nullptr;
     geomManager       = scene ? scene->getManager<GeometryManager>(kWKGeometryManager) : nullptr;
-    fontTexManager    = scene ? scene->getFontTextureManager() : nullptr;
     partSysManager    = scene ? scene->getManager<ParticleSystemManager>(kWKParticleSystemManager) : nullptr;
 }
 
@@ -113,6 +110,14 @@ void ComponentManager::addComponentObject(const ComponentObjectRef &compObj, Cha
         // If no representation is set, show this item if its representation is blank.
         const bool enable = (hit != representations.end()) ? (compObj->representation == hit->second) : compObj->representation.empty();
 
+#ifdef LOG_REPRESENTATIONS
+        if (enable)
+        wkLogLevel(Verbose, "CO id=%lld uuid=%s rep=%s active=%s result=%s",
+                   compObj->getId(), compObj->uuid.c_str(), compObj->representation.c_str(),
+                   (hit != representations.end())?hit->second.c_str():"(none)",
+                   enable ? "enabled" : "disabled");
+#endif
+
         enableComponentObject(compObj, enable, changes);
     }
 }
@@ -125,6 +130,7 @@ bool ComponentManager::hasComponentObject(SimpleIdentity compID)
     return it != compObjsById.end();
 }
 
+// NOLINTNEXTLINE(google-default-arguments)
 void ComponentManager::removeComponentObject(PlatformThreadInfo *threadInfo,
                                              SimpleIdentity compID,
                                              ChangeSet &changes,
@@ -134,6 +140,7 @@ void ComponentManager::removeComponentObject(PlatformThreadInfo *threadInfo,
     removeComponentObjects(threadInfo,compIDs, changes, disposeAfterRemoval);
 }
 
+// NOLINTNEXTLINE(google-default-arguments)
 void ComponentManager::removeComponentObjects(PlatformThreadInfo *threadInfo,
                                               const std::vector<ComponentObjectRef> &compObjs,
                                               ChangeSet &changes,
@@ -141,7 +148,8 @@ void ComponentManager::removeComponentObjects(PlatformThreadInfo *threadInfo,
 {
     SimpleIDSet compIDs;
 
-    for (auto compObj: compObjs) {
+    for (const auto &compObj: compObjs)
+    {
         compIDs.insert(compObj->getId());
     }
 
@@ -192,12 +200,13 @@ void ComponentManager::removeComponentObjects_NoLock(PlatformThreadInfo *,
     }
 }
 
+// NOLINTNEXTLINE(google-default-arguments)
 void ComponentManager::removeComponentObjects(PlatformThreadInfo *threadInfo,
                                               const SimpleIDSet &compIDs,
                                               ChangeSet &changes,
                                               __unused bool disposeAfterRemoval)    // used by platform override
 {
-    if (compIDs.empty())
+    if (compIDs.empty() || !scene)
         return;
     
     std::vector<ComponentObjectRef> compRefs;
@@ -232,13 +241,16 @@ void ComponentManager::removeComponentObjects(PlatformThreadInfo *threadInfo,
             geomManager->removeGeometry(compObj->geomIDs, changes);
         if (!compObj->drawStringIDs.empty())
         {
-            // Giving the fonts 2s to stick around
-            //       This avoids problems with texture being paged out.
-            //       Without this we lose the textures before we're done with them
-            const TimeInterval when = scene->getCurrentTime() + 2.0;
-            for (SimpleIdentity dStrID : compObj->drawStringIDs)
+            if (const auto ftm = scene ? scene->getFontTextureManager() : nullptr)
             {
-                fontTexManager->removeString(threadInfo, dStrID, changes, when);
+                // Giving the fonts 2s to stick around
+                //       This avoids problems with texture being paged out.
+                //       Without this we lose the textures before we're done with them
+                const TimeInterval when = scene->getCurrentTime() + 2.0;
+                for (SimpleIdentity dStrID : compObj->drawStringIDs)
+                {
+                    ftm->removeString(threadInfo, dStrID, changes, when);
+                }
             }
         }
         for (const auto partSysID : compObj->partSysIDs)
@@ -252,6 +264,7 @@ void ComponentManager::removeComponentObjects(PlatformThreadInfo *threadInfo,
     releaseMaskIDs(maskIDs);
 }
 
+// NOLINTNEXTLINE(google-default-arguments)
 void ComponentManager::enableComponentObject(SimpleIdentity compID, bool enable, ChangeSet &changes, bool resolveReps)
 {
     ComponentObjectRef compRef;
@@ -279,6 +292,7 @@ void ComponentManager::enableComponentObject(SimpleIdentity compID, bool enable,
 }
 
 
+// NOLINTNEXTLINE(google-default-arguments)
 void ComponentManager::enableComponentObjects(const SimpleIDSet &compIDs,bool enable,ChangeSet &changes, bool resolveReps)
 {
     std::vector<ComponentObjectRef> compRefs;
@@ -317,13 +331,9 @@ static bool ResolveRepresentationState(const ComponentObjectRef &thisObj, const 
     assert(thisObj->uuid == thatObj->uuid && !thisObj->uuid.empty());
 
     bool const enable = thisObj->enable;
-    if (thisObj.get() == thatObj.get())
+    if (thisObj.get() == thatObj.get() || thatObj->representation == thisObj->representation)
     {
-        return enable;
-    }
-    else if (thatObj->representation == thisObj->representation)
-    {
-        // Another instance of the same representation.
+        // The references refer to the same object, or instances of the same representation.
         // For example, there may be two versions while transitioning between
         // levels, or the same object may appear in multiple tiles of a dataset.
         // Apply the same state to it.
@@ -350,6 +360,7 @@ static bool ResolveRepresentationState(const ComponentObjectRef &thisObj, const 
     return thatObj->enable;
 }
 
+// NOLINTNEXTLINE(google-default-arguments)
 void ComponentManager::enableComponentObject(const ComponentObjectRef &compObj, bool enable, ChangeSet &changes, bool resolveReps)
 {
     // Note: Should lock just around this component object
@@ -403,18 +414,18 @@ void ComponentManager::enableComponentObject(const ComponentObjectRef &compObj, 
     }
 }
 
-static const std::less<std::string> DefStringLess;
 static inline bool HasUUID(const ComponentObjectRef &obj)
 {
     return !obj->uuid.empty();
 }
 static inline bool ByUUIDThenRep(const ComponentObjectRef &l, const ComponentObjectRef &r)
 {
-    return DefStringLess(l->uuid, r->uuid) ||       // less
-        (!DefStringLess(r->uuid, l->uuid) &&        // equal
-          DefStringLess(l->representation, r->representation));
+    return std::less<>()(l->uuid, r->uuid) ||       // less
+           (!std::less<>()(r->uuid, l->uuid) &&        // equal
+             std::less<>()(l->representation, r->representation));
 }
 
+// NOLINTNEXTLINE(google-default-arguments)
 void ComponentManager::enableComponentObjects(const std::vector<ComponentObjectRef> &compRefs, bool enable,
                                               ChangeSet &changes, bool resolveReps)
 {
@@ -463,6 +474,11 @@ void ComponentManager::setRepresentation(const std::string &repName,
                                          ChangeSet &changes)
 {
     std::vector<ComponentObjectRef> enableObjs, disableObjs;
+
+#ifdef LOG_REPRESENTATIONS
+    std::stringstream idsStr, enStr, disStr;
+    for (auto i = beg; i != end; ++i) idsStr << ((i==beg)?"":",") << i->c_str();
+#endif
 
     std::unique_lock<std::mutex> guardLock(lock);
 
@@ -520,6 +536,13 @@ void ComponentManager::setRepresentation(const std::string &repName,
     }
 
     guardLock.unlock();
+
+#ifdef LOG_REPRESENTATIONS
+    for (const auto &x : enableObjs) enStr << x->getId() << ",";
+    for (const auto &x : disableObjs) disStr << x->getId() << ",";
+    wkLogLevel(Verbose, "Set representation %s for %s : enable %s disable %s",
+               repName.c_str(), idsStr.str().c_str(), enStr.str().c_str(), disStr.str().c_str());
+#endif
 
     if (!enableObjs.empty()) enableComponentObjects(enableObjs, true, changes);
     if (!disableObjs.empty()) enableComponentObjects(disableObjs, false, changes);

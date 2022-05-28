@@ -3,9 +3,10 @@
 //  AutoTester
 //
 //  Created by jmnavarro on 24/10/16.
-//  Copyright © 2016-2017 mousebird consulting.
+//  Copyright 2016-2022 mousebird consulting.
 //
 import Foundation
+import WhirlyGlobe
 
 class Issue721TestCase : MaplyTestCase{
 

@@ -3,17 +3,18 @@
 //  AutoTester
 //
 //  Created by Steve Gifford on 11/12/19.
-//  Copyright © 2019 mousebird consulting. All rights reserved.
+//  Copyright 2019-2022 mousebird consulting. All rights reserved.
 //
 
 import UIKit
+import WhirlyGlobe
 
 class MapboxTestCase: MaplyTestCase {
     
     override init() {
         super.init()
 
-        self.name = "Mapbox Variations"
+        self.name = "Mapbox Hybrid Map"
         self.implementations = [.map,.globe]
     }
     
@@ -88,6 +89,8 @@ class MapboxTestCase: MaplyTestCase {
             return url
         }
         mapboxMap.styleSettings.textScale = 1.2  // Note: Why does this work better than 2.0?
+        mapboxMap.styleSettings.useWideVectors = true
+        mapboxMap.styleSettings.usePerfWideVectors = true;
         mapboxMap.backgroundAllPolys = false  // Render all the polygons into an image for the globe
         mapboxMap.start()
         mapboxMap.cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent(name)
@@ -104,7 +107,14 @@ class MapboxTestCase: MaplyTestCase {
         mapVC.performanceOutput = true
         
         startMap(styles[MapboxStyle], viewC: mapVC, round: true)
+
+        var h = Float(0.1)
+        timer = Timer.scheduledTimer(withTimeInterval: 12.0, repeats: true) { _ in
+            mapVC.animate(toPosition:MaplyCoordinateMakeWithDegrees(-122.4797218, 45.4143198), height: h, heading: 0.0, time: 0.0)
+            h /= 2
+        }
     }
 
+    var timer: Timer?
 }
 

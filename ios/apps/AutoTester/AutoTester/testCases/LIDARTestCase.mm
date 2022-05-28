@@ -3,11 +3,10 @@
 //  AutoTester
 //
 //  Created by Steve Gifford on 1/24/17.
-//  Copyright © 2017 mousebird consulting.
+//  Copyright 2017-2022 mousebird consulting.
 //
 
 #import "LIDARTestCase.h"
-#import "WhirlyGlobeComponent.h"
 
 @implementation LIDARTestCase
 {
@@ -18,7 +17,7 @@
 {
     if (self = [super init]) {
         //self.captureDelay = 7;
-        self.name = @"LIDAR Stadium";
+        self.name = @"LIDAR Stadium (broken)";
         self.implementations = MaplyTestCaseImplementationGlobe;
     }
     return self;

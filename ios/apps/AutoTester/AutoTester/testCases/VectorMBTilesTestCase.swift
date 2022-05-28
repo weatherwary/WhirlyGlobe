@@ -3,10 +3,11 @@
 //  AutoTester
 //
 //  Created by Steve Gifford on 3/9/16.
-//  Copyright © 2016-2017 mousebird consulting.
+//  Copyright 2016-2022 mousebird consulting.
 //
 
 import Foundation
+import WhirlyGlobe
 
 class VectorMBTilesTestCase: MaplyTestCase {
     

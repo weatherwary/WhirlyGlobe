@@ -3,7 +3,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 7/22/13.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ namespace WhirlyKit
 class VectorSceneRep : public Identifiable
 {
 public:
-    VectorSceneRep() : fade(0.0) { }
+    VectorSceneRep() = default;
     VectorSceneRep(SimpleIdentity theId) : Identifiable(theId) { }
     
     // Clean out the representation
@@ -53,7 +53,7 @@ public:
     
     SimpleIDSet drawIDs;    // The drawables we created
     SimpleIDSet instIDs;    // Instances if we're doing that
-    float fade;       // If set, the amount of time to fade out before deletion
+    float fadeOut = 0.0;       // If set, the amount of time to fade out before deletion
 };
 typedef std::set<VectorSceneRep *,IdentifiableSorter> VectorSceneRepSet;
 
@@ -63,27 +63,27 @@ typedef enum {TextureProjectionNone,TextureProjectionTanPlane,TextureProjectionS
 class VectorInfo : public BaseInfo
 {
 public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
-    
-    VectorInfo();
+    VectorInfo() = default;
     VectorInfo(const Dictionary &dict);
     virtual ~VectorInfo() = default;
 
     // Convert contents to a string for debugging
-    virtual std::string toString();
-    
-    bool                        filled;
-    float                       sample;
-    SimpleIdentity              texId;
-    Point2f                     texScale;
-    float                       subdivEps;
-    bool                        gridSubdiv;
-    TextureProjections          texProj;
-    RGBAColor                   color;
-    float                       lineWidth;
-    bool                        centered;
-    bool                        vecCenterSet;
-    Point2f                     vecCenter;
+    virtual std::string toString() const override;
+
+    bool                        filled = false;
+    float                       sample = 0.0f;
+    SimpleIdentity              texId = EmptyIdentity;
+    Point2f                     texScale = { 1.0f, 1.0f };
+    float                       subdivEps = 0.0f;
+    bool                        gridSubdiv = false;
+    TextureProjections          texProj = TextureProjectionNone;
+    RGBAColor                   color = RGBAColor::white();
+    float                       lineWidth = 1.0f;
+    bool                        centered = true;
+    bool                        vecCenterSet = false;
+    bool                        closeAreals = true;
+    bool                        selectable = true;
+    Point2f                     vecCenter = { 0.0f, 0.0f };
     FloatExpressionInfoRef      opacityExp;
     ColorExpressionInfoRef      colorExp;
 };

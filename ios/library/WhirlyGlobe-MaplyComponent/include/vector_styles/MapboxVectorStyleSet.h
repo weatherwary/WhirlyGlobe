@@ -3,7 +3,7 @@
  *  WhirlyGlobe-MaplyComponent
  *
  *  Created by Steve Gifford on 2/16/15.
- *  Copyright 2011-2015 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@
  */
 
 #import <Foundation/Foundation.h>
-#import "vector_styles/MaplyVectorStyle.h"
-#import "vector_tiles/MapboxVectorTiles.h"
+#import <WhirlyGlobe/MaplyVectorStyle.h>
+#import <WhirlyGlobe/MapboxVectorTiles.h>
 
 typedef NS_ENUM(NSUInteger,MapboxLayerType) {
     MapboxLayerTypeBackground,

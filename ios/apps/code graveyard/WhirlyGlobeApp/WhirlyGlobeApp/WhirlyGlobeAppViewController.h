@@ -3,7 +3,7 @@
  *  WhirlyGlobeApp
  *
  *  Created by Stephen Gifford on 1/12/11.
- *  Copyright 2011-2012 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
  */
 
 #import <UIKit/UIKit.h>
-#import "WhirlyGlobe.h"
+#import "WhirlyGlobeLib.h"
 #import "InteractionLayer.h"
 #import "PanDelegateFixed.h"
 

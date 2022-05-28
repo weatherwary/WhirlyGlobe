@@ -2,7 +2,7 @@
 *  WhirlyGlobeLib
 *
 *  Created by Steve Gifford on 4/8/20.
-*  Copyright 2011-2021 mousebird consulting
+*  Copyright 2011-2022 mousebird consulting
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@
 #import "SharedAttributes.h"
 #import "WhirlyKitLog.h"
 #import "MapboxVectorStyleBackground.h"
+#import "MapboxVectorStyleLine.h"
+#import "MapboxVectorStyleSymbol.h"
 #import <regex>
 
 namespace WhirlyKit
@@ -164,7 +166,7 @@ MaplyVectorFunctionStop::MaplyVectorFunctionStop()
 {
 }
 
-bool MaplyVectorFunctionStops::parse(const DictionaryRef &entry,MapboxVectorStyleSetImpl *,bool isText)
+bool MaplyVectorFunctionStops::parse(const DictionaryRef &entry,bool isText)
 {
     base = entry->getDouble(strBase,1.0);
     
@@ -484,6 +486,11 @@ MapboxVectorStyleSetImpl::MapboxVectorStyleSetImpl(Scene *inScene,
         prog = scene->findProgramByName(MaplyDefaultWideVectorShader);
     if (prog)
         wideVectorProgramID = prog->getId();
+
+    if (const auto prog = scene->findProgramByName(MaplyWideVectorPerformanceShader))
+    {
+        wideVectorPerfProgramID = prog->getId();
+    }
 }
 
 bool MapboxVectorStyleSetImpl::parse(PlatformThreadInfo *inst,const DictionaryRef &styleDict)
@@ -494,27 +501,35 @@ bool MapboxVectorStyleSetImpl::parse(PlatformThreadInfo *inst,const DictionaryRe
     // Layers are where the action is
     const std::vector<DictionaryEntryRef> layerStyles = styleDict->getArray(strLayers);
     int which = 0;
-    for (const auto &layerStyle : layerStyles) {
-        if (layerStyle->getType() == DictTypeDictionary) {
-            auto layer = MapboxVectorStyleLayer::VectorStyleLayer(inst,this,layerStyle->getDict(),(1*which + tileStyleSettings->baseDrawPriority));
-            if (!layer)
-            {
-                continue;
-            }
-
-            // Sort into various buckets for quick lookup
-            layersByName[layer->ident] = layer;
-            layersByUUID[layer->getUuid(inst)] = layer;
-            if (!layer->sourceLayer.empty())
-            {
-                layersBySource.insert(std::make_pair(layer->sourceLayer, layer));
-            }
-            layers.push_back(layer);
+    for (const auto &layerStyle : layerStyles)
+    {
+        if (layerStyle->getType() == DictTypeDictionary)
+        {
+            const auto pri = which + tileStyleSettings->baseDrawPriority;
+            auto layer = MapboxVectorStyleLayer::VectorStyleLayer(inst,this,layerStyle->getDict(),pri);
+            addLayer(inst, std::move(layer));
         }
         which++;
     }
     
     return true;
+}
+
+void MapboxVectorStyleSetImpl::addLayer(PlatformThreadInfo *inst, MapboxVectorStyleLayerRef layer)
+{
+    if (!layer)
+    {
+        return;
+    }
+
+    // Sort into various buckets for quick lookup
+    layersByName[layer->ident] = layer;
+    layersByUUID[layer->getUuid(inst)] = layer;
+    if (!layer->sourceLayer.empty())
+    {
+        layersBySource.insert(std::make_pair(layer->sourceLayer, layer));
+    }
+    layers.push_back(std::move(layer));
 }
 
 long long MapboxVectorStyleSetImpl::generateID()
@@ -790,7 +805,8 @@ int MapboxVectorStyleSetImpl::enumValue(const DictionaryEntryRef &entry,const ch
     return defVal;
 }
 
-MapboxTransDoubleRef MapboxVectorStyleSetImpl::transDouble(const DictionaryEntryRef &theEntry, double defVal)
+MapboxTransDoubleRef MapboxVectorStyleSetImpl::transDouble(const DictionaryEntryRef &theEntry,
+                                                           const char *valName, double defVal)
 {
     if (!theEntry)
         return std::make_shared<MapboxTransDouble>(defVal);
@@ -798,77 +814,80 @@ MapboxTransDoubleRef MapboxVectorStyleSetImpl::transDouble(const DictionaryEntry
     // This is probably stops
     if (theEntry->getType() == DictTypeDictionary) {
         auto stops = std::make_shared<MaplyVectorFunctionStops>();
-        stops->parse(theEntry->getDict(), this, false);
+        stops->parse(theEntry->getDict(), false);
         if (stops) {
             return MapboxTransDoubleRef(new MapboxTransDouble(stops));
         } else {
-            wkLogLevel(Warn, "Expecting key word 'stops' in entry %s",name.c_str());
+            wkLogLevel(Warn, "Expecting key word 'stops' in '%s'", valName ? valName : "");
         }
     } else if (theEntry->getType() == DictTypeDouble || theEntry->getType() == DictTypeInt) {
         return std::make_shared<MapboxTransDouble>(theEntry->getDouble());
     } else {
-        wkLogLevel(Warn,"Unexpected type found in entry %s. Was expecting a double.",name.c_str());
+        wkLogLevel(Warn,"Unexpected type found in '%s'. Was expecting a double.", valName ? valName : "");
     }
 
     return MapboxTransDoubleRef();
 }
 
-
-MapboxTransDoubleRef MapboxVectorStyleSetImpl::transDouble(const std::string &valName, const DictionaryRef &entry, double defVal)
+MapboxTransDoubleRef MapboxVectorStyleSetImpl::transDouble(const DictionaryEntryRef &theEntry, double defVal)
 {
-    return transDouble(entry ? entry->getEntry(valName) : DictionaryEntryRef(), defVal);
+    return transDouble(theEntry, "(unnamed)", defVal);
 }
 
-MapboxTransColorRef MapboxVectorStyleSetImpl::transColor(const std::string &valName, const DictionaryRef &entry, const RGBAColor *defVal)
+MapboxTransDoubleRef MapboxVectorStyleSetImpl::transDouble(const std::string &valName, const DictionaryRef &dict, double defVal)
 {
-    const auto defValRef = defVal ? std::make_shared<RGBAColor>(*defVal) : RGBAColorRef();
+    return transDouble(dict ? dict->getEntry(valName) : DictionaryEntryRef(), valName.c_str(), defVal);
+}
 
-    if (!entry) {
-        return defVal ? std::make_shared<MapboxTransColor>(defValRef) : MapboxTransColorRef();
-    }
-
-    // They pass in the whole dictionary and let us look the field up
-    const DictionaryEntryRef theEntry = entry->getEntry(valName);
-    if (!theEntry) {
-        return defVal ? std::make_shared<MapboxTransColor>(defValRef) : MapboxTransColorRef();
-    }
-
-    // This is probably stops
-    if (theEntry->getType() == DictTypeDictionary) {
-        auto stops = std::make_shared<MaplyVectorFunctionStops>();
-        if (stops->parse(theEntry->getDict(), this, false)) {
-            return std::make_shared<MapboxTransColor>(stops);
-        } else {
-            wkLogLevel(Warn, "Expecting key word 'stops' in entry %s", valName.c_str());
+MapboxTransColorRef MapboxVectorStyleSetImpl::transColor(const DictionaryEntryRef &entry, const char *valName, const RGBAColorRef &defVal)
+{
+    switch (entry ? entry->getType() : DictTypeNone)
+    {
+        case DictTypeDictionary:
+        {
+            auto stops = std::make_shared<MaplyVectorFunctionStops>();
+            if (stops->parse(entry->getDict(), false))
+            {
+                return std::make_shared<MapboxTransColor>(stops);
+            }
+            wkLogLevel(Warn, "Expecting key word 'stops' in '%s'", valName ? valName : "");
+            break;
         }
-    } else if (theEntry->getType() == DictTypeString) {
-        RGBAColorRef color = colorValue(valName, theEntry, DictionaryRef(), defValRef, false);
-        if (color)
-            return std::make_shared<MapboxTransColor>(color);
-        else {
-            wkLogLevel(Warn, "Unexpected type found in entry %s. Was expecting a color.", valName.c_str());
+        case DictTypeString:
+        {
+            if (auto color = colorValue(valName, entry, DictionaryRef(), defVal, false))
+            {
+                return std::make_shared<MapboxTransColor>(color);
+            }
+            wkLogLevel(Warn, "Unexpected type found in '%s'. Expecting a color.", valName ? valName : "");
+            break;
         }
-    } else {
-        wkLogLevel(Warn, "Unexpected type found in entry %s. Was expecting a color.", valName.c_str());
+        case DictTypeNone:
+            break;
+        default:
+            wkLogLevel(Warn, "Unexpected type found in '%s'. Expecting a color.", valName ? valName : "");
     }
-
-    return MapboxTransColorRef();
+    return defVal ? std::make_shared<MapboxTransColor>(defVal) : MapboxTransColorRef();
 }
 
-MapboxTransColorRef MapboxVectorStyleSetImpl::transColor(const std::string &inName, const DictionaryRef &entry, const RGBAColor &inColor)
+MapboxTransColorRef MapboxVectorStyleSetImpl::transColor(const std::string &valName, const DictionaryRef &dict, const RGBAColorRef &defVal)
 {
-    const RGBAColor color = inColor;
-    return transColor(inName, entry, &color);
+    return transColor(dict ? dict->getEntry(valName) : DictionaryEntryRef(), valName.c_str(), defVal);
 }
 
-MapboxTransTextRef MapboxVectorStyleSetImpl::transText(const std::string &inName, const DictionaryRef &entry, const std::string &str)
+MapboxTransColorRef MapboxVectorStyleSetImpl::transColor(const std::string &valName, const DictionaryRef &dict, const RGBAColor &defVal)
 {
-    if (!entry) {
+    return transColor(valName, dict, std::make_shared<RGBAColor>(defVal));
+}
+
+MapboxTransTextRef MapboxVectorStyleSetImpl::transText(const std::string &inName, const DictionaryRef &dict, const std::string &str)
+{
+    if (!dict) {
         return str.empty() ? MapboxTransTextRef() : std::make_shared<MapboxTransText>(str);
     }
     
     // They pass in the whole dictionary and let us look the field up
-    const DictionaryEntryRef theEntry = entry->getEntry(inName);
+    const DictionaryEntryRef theEntry = dict->getEntry(inName);
     if (!theEntry) {
         return str.empty() ? MapboxTransTextRef() : std::make_shared<MapboxTransText>(str);
     }
@@ -876,7 +895,7 @@ MapboxTransTextRef MapboxVectorStyleSetImpl::transText(const std::string &inName
     // This is probably stops
     if (theEntry->getType() == DictTypeDictionary) {
         auto stops = std::make_shared<MaplyVectorFunctionStops>();
-        if (stops->parse(theEntry->getDict(), this, true)) {
+        if (stops->parse(theEntry->getDict(), true)) {
             return std::make_shared<MapboxTransText>(stops);
         } else {
             wkLogLevel(Warn, "Expecting key word 'stops' in entry %s", inName.c_str());
@@ -1028,6 +1047,111 @@ void MapboxVectorStyleSetImpl::addSprites(MapboxVectorStyleSpritesRef newSprites
     sprites = std::move(newSprites);
 }
 
+bool MapboxVectorStyleSetImpl::hasRepresentations()
+{
+    return std::any_of(layers.begin(), layers.end(),
+                [](const auto &layer){ return !layer->getRepresentation().empty(); });
+}
+
+static std::string repLayerName(const std::string &ident, const std::string &repName)
+{
+    std::string s;
+    s.reserve(ident.size() + repName.size() + 1);
+    s.append(ident).append("_", 1).append(repName);
+    return s;
+}
+
+bool MapboxVectorStyleSetImpl::addRepresentations(PlatformThreadInfo *inst,
+                                                  const char* uuidAttr,
+                                                  const std::vector<std::string> &sources,
+                                                  const std::vector<std::string> &reps,
+                                                  const std::vector<float> &sizes,
+                                                  const std::vector<std::string> &colors)
+{
+    std::vector<MapboxVectorStyleLayerRef> newLayers;
+
+    // each layer-source
+    for (const auto &source : sources)
+    {
+        // find matching layers
+        const auto range = layersBySource.equal_range(source);
+
+        if (range.first == range.second)
+        {
+            wkLogLevel(Debug, "Layer source '%s' does not match any layers", source.c_str());
+            continue;
+        }
+
+        // each layer with matching source
+        for (auto iLayer = range.first; iLayer != range.second; ++iLayer)
+        {
+            // each representation name
+            for (size_t repIdx = 0; repIdx < reps.size(); ++repIdx)
+            {
+                const auto &repName = reps[repIdx];
+                const auto &size = sizes[repIdx];
+                const auto &color = colors[repIdx];
+
+                auto &layer = *iLayer->second;
+                const auto &ident = layer.ident;
+
+                if (!layer.representation.empty())
+                {
+                    // This is already a representation layer
+                    continue;
+                }
+
+                const auto repIdent = repLayerName(ident, repName);
+                if (std::any_of(range.first, range.second,
+                                [&](const auto &kv){ return kv.second->ident == repIdent; }))
+                {
+                    // This layer already has a corresponding layer for this representation
+                    continue;
+                }
+
+                wkLogLevel(Verbose, "Adding representation layer %s for %s with src=%s and rep=%s",
+                           repIdent.c_str(), layer.ident.c_str(), layer.sourceLayer.c_str(), repName.c_str());
+
+                // Make a copy of the layer
+                if (auto layerCopy = layer.clone())
+                {
+                    layer.repUUIDField = uuidAttr;
+                    layerCopy->repUUIDField = uuidAttr;
+                    layerCopy->representation = repName;
+                    layerCopy->ident = repIdent;
+                    layerCopy->visible = false;
+                    // todo: virtual methods for override color/size/etc.
+                    // todo: override arbitrary properties?
+                    if (size > 0)
+                    {
+                        if (auto sym = dynamic_cast<MapboxVectorLayerSymbol*>(layerCopy.get()))
+                        {
+                            sym->layout.iconSize = std::make_shared<MapboxTransDouble>(size);
+                        }
+                    }
+                    if (!color.empty())
+                    {
+                        if (auto lin = dynamic_cast<MapboxVectorLayerLine*>(layerCopy.get()))
+                        {
+                            const auto multiplyAlpha = false; // ?
+                            const auto colorRef = parseColor(color, std::string(), RGBAColorRef(), multiplyAlpha);
+                            lin->paint.color = std::make_shared<MapboxTransColor>(colorRef);
+                        }
+                    }
+                    newLayers.push_back(std::move(layerCopy));
+                }
+            }
+        }
+    }
+
+    for (auto &layer : newLayers)
+    {
+        addLayer(inst, std::move(layer));
+    }
+    return true;
+}
+
+
 //#define LOW_LEVEL_UNIT_TESTS
 #if defined(LOW_LEVEL_UNIT_TESTS)
 static struct UnitTests {
@@ -1068,7 +1192,7 @@ static struct UnitTests {
 
         //todo: hsl/hsla
 
-        wkLog("MapboxStyleSet Color Tests Passed");
+        wkLogLevel(Info, "MapboxStyleSet Color Tests Passed");
     }
     RGBAColorRef c(RGBAColor cv) const { return std::make_shared<RGBAColor>(cv); }
     RGBAColorRef c(uint32_t cv) const { return c(RGBAColor::FromARGBInt(cv)); }
@@ -1077,13 +1201,13 @@ static struct UnitTests {
     }
     void check(const RGBAColorRef &cv, const RGBAColorRef &exp, const char *v = nullptr) {
         if ((bool)cv != (bool)exp) {
-            wkLog("RGBAColor text failed: expected %s got %s%s%s",
+            wkLogLevel(Error, "RGBAColor text failed: expected %s got %s%s%s",
                   exp ? "value" : "null", cv ? "value" : "null",
                   v ? " from input: " : "", v ? v : "");
             assert(!"RGBAColor parse test failed");
         }
         if (cv && exp && *cv != *exp) {
-            wkLog("RGBAColor parse failed: expected %.8x got %.8x%s%s",
+            wkLogLevel(Error, "RGBAColor parse failed: expected %.8x got %.8x%s%s",
                   exp->asARGBInt(), cv->asARGBInt(),
                   v ? " from input: " : "", v ? v : "");
             assert(!"RGBAColor parse test failed");

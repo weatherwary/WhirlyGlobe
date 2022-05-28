@@ -1,31 +1,26 @@
 //
-//  WideVectorsTestCase.m
+//  WideVectorsTestCase.mm
 //  AutoTester
 //
 //  Created by jmnavarro on 3/11/15.
-//  Copyright © 2015-2017 mousebird consulting.
+//  Copyright 2015-2022 mousebird consulting.
 //
 
 #import "WideVectorsTestCase.h"
-#import "MaplyBaseViewController.h"
-#import "MaplyTextureBuilder.h"
-#import "MaplyScreenLabel.h"
-#import "WhirlyGlobeViewController.h"
-#import "MaplyViewController.h"
-#import "AutoTester-Swift.h"
+#import "SwiftBridge.h"
 
-@implementation WideVectorsTestCase
+@interface NSDictionary(Stuff)
+- (NSDictionary *_Nonnull) dictionaryByMergingWith:(NSDictionary *_Nullable)dict;
+@end
+
+@implementation WideVectorsTestCaseBase
 {
     GeographyClassTestCase * baseCase;
 }
 
-- (instancetype)init
+- (instancetype)initWithName:(NSString*)name supporting:(MaplyTestCaseImplementations)impl
 {
-	if (self = [super init]) {
-		self.name = @"Wide Vectors";
-		self.implementations = MaplyTestCaseImplementationMap | MaplyTestCaseImplementationGlobe;
-	}
-	return self;
+    return (self = [super initWithName:name supporting:impl]);
 }
 
 
@@ -141,7 +136,6 @@
 - (NSArray *)addGeoJson:(NSString*)name viewC:(MaplyBaseViewController *)viewC
 {
     return [self addGeoJson:name dashPattern:@[@8, @8] width:4 viewC:viewC];
-//    return [self addGeoJson:name dashPattern:@[@8, @8] width:100 viewC:viewC];
 }
 
 - (NSArray *)addWideVectors:(MaplyVectorObject *)vecObj
@@ -218,91 +212,122 @@
 				  kMaplyDrawPriority: @(200)
 				  }];
 	
-	if ([baseViewC isKindOfClass:[WhirlyGlobeViewController class]]) {
-		[(WhirlyGlobeViewController*)baseViewC animateToPosition:MaplyCoordinateMakeWithDegrees(-122.4192, 37.7793) height:0.3 heading:0.8 time:0.1];
-		[(WhirlyGlobeViewController*)baseViewC animateToPosition:MaplyCoordinateMakeWithDegrees(-122.4192, 37.7793) height:0.1 heading:0.8 time:0.1];
-		[(WhirlyGlobeViewController*)baseViewC animateToPosition:MaplyCoordinateMakeWithDegrees(-122.4192, 37.7793) height:0.005 heading:0.8 time:0.1];
-	}
-	else {
-		if ([baseViewC isKindOfClass:[MaplyViewController class]]) {
-			[(MaplyViewController*)baseViewC animateToPosition:MaplyCoordinateMakeWithDegrees(-122.4192, 37.7793) height:0.3 time:0.1];
-			[(MaplyViewController*)baseViewC animateToPosition:MaplyCoordinateMakeWithDegrees(-122.4192, 37.7793) height:0.1 time:0.1];
-			[(MaplyViewController*)baseViewC animateToPosition:MaplyCoordinateMakeWithDegrees(-122.4192, 37.7793) height:0.005 time:0.1];
-			
-		}
-	}
-	
 	return @[lines,screenLines,realLines,labelObj];
 }
 
-- (void)overlap:(MaplyBaseViewController *)viewC {
+// Like `overlap:` but confirms that splitting vector colors within a single CO/info context
+- (void)vecColors:(MaplyBaseViewController *)viewC {
+    const auto cx = -60.0;
+    const auto cy = 40.0;
+    const auto cs = 0.1;
+    NSMutableArray<MaplyVectorObject *> *objs = [NSMutableArray arrayWithCapacity:5];
+    for (int i = 0; i < 5; ++i) {   // lines
+        const MaplyCoordinate coords[] = {
+            MaplyCoordinateMakeWithDegrees(cx - 4*cs + i*1*cs, cy + 3*cs),
+            MaplyCoordinateMakeWithDegrees(cx + 2*cs + i*3*cs, cy - 2*cs),
+            MaplyCoordinateMakeWithDegrees(cx + 8*cs - i*2*cs, cy - 6*cs),
+        };
+
+        const auto cc = 0.2f * i;
+        UIColor *vecColor = [UIColor colorWithRed:0 green:cc blue:1.0f-cc alpha:0.5];
+        NSDictionary *vecDesc = @{ kMaplyColor: vecColor };
+
+        MaplyVectorObject *vecObj = [[MaplyVectorObject alloc] initWithLineString:&coords[0]
+                                                                        numCoords:sizeof(coords)/sizeof(coords[0])
+                                                                       attributes:vecDesc];
+        [vecObj subdivideToGlobe:0.0001];
+        [objs addObject:vecObj];
+    }
 
     NSDictionary *wideDesc = @{
-        kMaplyColor: [UIColor colorWithRed:0 green:0 blue:1.0 alpha:0.2],
-        kMaplyFilled: @NO,
+        kMaplyColor: [UIColor colorWithRed:1.0 green:0.0 blue:0.0 alpha:0.2],
         kMaplyEnable: @YES,
         kMaplyFade: @0,
         kMaplyDrawPriority: @(kMaplyVectorDrawPriorityDefault + 1),
-        kMaplyVecCentered: @YES,
-        kMaplyVecTexture: [NSNull null],
         kMaplyWideVecEdgeFalloff:@(5),
         kMaplyWideVecJoinType: kMaplyWideVecMiterJoin,
         kMaplyWideVecCoordType: kMaplyWideVecCoordTypeScreen,
         kMaplyWideVecCoordType: kMaplyWideVecCoordTypeScreen,
-        kMaplyWideVecOffset: @(10.0),
-        kMaplyWideVecMiterLimit: @(10.0),  // More than 10 degrees need a bevel join
-        kMaplyVecWidth: @(20.0),
-        kMaplyWideVecImpl: kMaplyWideVecImplPerf,//kMaplyWideVecImpl,
+        kMaplyWideVecOffset: @(5),
+        kMaplyWideVecMiterLimit: @(10.0),
+        kMaplyVecWidth: @(10.0),
+        //kMaplyWideVecImpl: kMaplyWideVecImplDefault,
+        kMaplyWideVecImpl: kMaplyWideVecImplPerf,
     };
 
-    NSMutableArray* objs = [NSMutableArray new];
-    for (int i = 0; i < 5; ++i) {
-        MaplyCoordinate coords[2] = {
-            MaplyCoordinateMakeWithDegrees(-90 + i*2, 40),
-            MaplyCoordinateMakeWithDegrees(-80 - i*2, 30),
-        };
-        MaplyVectorObject *vecObj = [[MaplyVectorObject alloc] initWithLineString:&coords[0] numCoords:2 attributes:nil];
-        [vecObj subdivideToGlobe:0.0001];
-        [objs addObject:vecObj];
-    }
     [viewC addWideVectors:objs desc:wideDesc mode:MaplyThreadCurrent];
+
+    NSMutableDictionary *desc = [NSMutableDictionary dictionaryWithDictionary:wideDesc];
+    for (int i = 0; i < 5; ++i) {
+        const auto cc = 0.2f * i;
+        UIColor *clColor = [UIColor colorWithRed:0 green:1.0f-cc blue:cc alpha:0.5];
+        objs[i].attributes[kMaplyColor] = clColor;
+    }
+    [viewC addVectors:objs desc:desc mode:MaplyThreadCurrent];
 }
 
-- (void)wideLineTest:(MaplyBaseViewController *)viewC
-{
-    [self addGeoJson:@"sawtooth.geojson" dashPattern:nil width:50.0 edge:20.0 simple:false viewC:viewC];
-    [self addGeoJson:@"moving-lawn.geojson" viewC:viewC];
-    [self addGeoJson:@"spiral.geojson" viewC:viewC];
-    [self addGeoJson:@"square.geojson" dashPattern:@[@2, @2] width:10.0 viewC:viewC];
-    [self addGeoJson:@"track.geojson" viewC:viewC];
-//    [self addGeoJson:@"uturn2.geojson" dashPattern:@[@16, @16] width:40 viewC:viewC];
+- (void)overlap:(MaplyBaseViewController *)viewC {
+    const auto cx = -90.0;
+    const auto cy = 40.0;
+    const auto cs = 0.1;
+    for (int k = 0; k < 2; ++k)     // rows
+    for (int j = 0; j < 2; ++j)     // cols
+    {
+        const int csep = 1;  // column separation
+        const int rsep = 2;  // row, 0 to overlay for def/perf comparison
+        for (int i = 0; i < 5; ++i) {   // lines
+            const MaplyCoordinate coords[] = {
+                MaplyCoordinateMakeWithDegrees(cx -  5*cs + i*1*cs + j*csep, cy +  5*cs - k*rsep),
+                MaplyCoordinateMakeWithDegrees(cx +  0*cs + i*2*cs + j*csep, cy -  0*cs - k*rsep),
+                MaplyCoordinateMakeWithDegrees(cx + 10*cs - i*2*cs + j*csep, cy - 10*cs - k*rsep),
+            };
 
-    [self addGeoJson:@"USA.geojson" viewC:viewC];
+            const auto cc = 0.2f * i;
+            UIColor *vecColor = [UIColor colorWithRed:0 green:cc blue:1.0f-cc alpha:0.5];
+            UIColor *clColor = [UIColor colorWithRed:0 green:1.0f-cc blue:cc alpha:0.5];
+            NSDictionary *vecDesc = @{
+                kMaplyColor: k ? vecColor : [NSNull null],
+            };
 
-//    [self addGeoJson:@"testJson.json" viewC:viewC];
-    
-    //    [self addGeoJson:@"straight.geojson"];
-    //    [self addGeoJson:@"uturn.geojson"];
-    
-    [self overlap:viewC];
-}
+            MaplyVectorObject *vecObj = [[MaplyVectorObject alloc] initWithLineString:&coords[0]
+                                                                            numCoords:sizeof(coords)/sizeof(coords[0])
+                                                                           attributes:vecDesc];
+            [vecObj subdivideToGlobe:0.0001];
 
+            // Set 0: default implementation, color=blue
+            // Set 1: performance implementation, color=red
+            // Set 2: performance implementation, color=blue
+            NSDictionary *wideDesc = @{
+                kMaplyColor: j ? [UIColor colorWithRed:0.0 green:0.0 blue:1.0 alpha:0.2] :
+                                 [UIColor colorWithRed:1.0 green:0.0 blue:0.0 alpha:0.2],
+                kMaplyFilled: @NO,
+                kMaplyEnable: @YES,
+                kMaplyFade: @0,
+                kMaplyDrawPriority: @(kMaplyVectorDrawPriorityDefault + 1),
+                kMaplyVecCentered: @YES,
+                kMaplyVecTexture: [NSNull null],
+                kMaplyWideVecEdgeFalloff:@(i),
+                kMaplyWideVecJoinType: kMaplyWideVecMiterJoin,
+                kMaplyWideVecCoordType: kMaplyWideVecCoordTypeScreen,
+                kMaplyWideVecCoordType: kMaplyWideVecCoordTypeScreen,
+                kMaplyWideVecOffset: @(2 * i),
+                kMaplyWideVecMiterLimit: @(10.0),  // More than 10 degrees need a bevel join
+                kMaplyVecWidth: @(20.0),
+                kMaplyWideVecImpl: j ? kMaplyWideVecImplDefault : kMaplyWideVecImplPerf,
+            };
 
-- (void)setUpWithGlobe:(WhirlyGlobeViewController *)globeVC{
-	
-	baseCase = [[GeographyClassTestCase alloc]init];
-	[baseCase setUpWithGlobe:globeVC];
-	[self wideLineTest:globeVC];
-    [globeVC animateToPosition:MaplyCoordinateMakeWithDegrees(-122.4192, 37.7793) time:0.1];
+            [viewC addWideVectors:@[vecObj] desc:wideDesc mode:MaplyThreadCurrent];
 
-}
-
-- (void)setUpWithMap:(MaplyViewController *)mapVC{
-	baseCase = [[GeographyClassTestCase alloc]init];
-	[baseCase setUpWithMap:mapVC];
-	[self wideLineTest:mapVC];
-    [mapVC animateToPosition:MaplyCoordinateMakeWithDegrees(-122.4192, 37.7793) time:0.1];
-    [self loadShapeFile:mapVC];
+            // Add a centerline for visualizing offsets
+            NSMutableDictionary *desc = [NSMutableDictionary dictionaryWithDictionary:wideDesc];
+            if (k) {
+                vecObj.attributes[kMaplyColor] = clColor;
+            } else {
+                desc[kMaplyColor] = [UIColor magentaColor];
+            }
+            [viewC addVectors:@[vecObj] desc:desc mode:MaplyThreadCurrent];
+        }
+    }
 }
 
 @end

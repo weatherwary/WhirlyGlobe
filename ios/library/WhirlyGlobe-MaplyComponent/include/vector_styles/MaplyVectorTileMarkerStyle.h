@@ -2,7 +2,7 @@
  *  WhirlyGlobe-MaplyComponent
  *
  *  Created by Steve Gifford on 1/3/14.
- *  Copyright 2011-2021 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
  *  limitations under the License.
  */
 
-#import "vector_styles/MaplyVectorStyle.h"
-#import "vector_styles/MaplyVectorTileStyle.h"
+#import <WhirlyGlobe/MaplyVectorStyle.h>
+#import <WhirlyGlobe/MaplyVectorTileStyle.h>
 
 /** 
     Implementation of the marker style symbolizer for Maply Vector Tiles.

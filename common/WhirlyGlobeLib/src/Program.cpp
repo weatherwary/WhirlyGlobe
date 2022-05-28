@@ -2,7 +2,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 10/23/12.
- *  Copyright 2011-2021 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -74,22 +74,23 @@ ShaderRemTextureReq::ShaderRemTextureReq(SimpleIdentity shaderID,SimpleIdentity 
 
 void ShaderRemTextureReq::execute(Scene *scene,SceneRenderer *renderer,WhirlyKit::View *view)
 {
-    Program *prog = scene->getProgram(shaderID);
-    if (prog)
+    if (Program *prog = scene->getProgram(shaderID))
+    {
         prog->clearTexture(texID);
+    }
 }
 
-ProgramUniformBlockSetRequest::ProgramUniformBlockSetRequest(SimpleIdentity inProgID,const RawDataRef &uniData,int bufferID)
+ProgramUniformBlockSetRequest::ProgramUniformBlockSetRequest(SimpleIdentity inProgID, RawDataRef uniData,int bufferID)
 {
     progID = inProgID;
-    uniBlock.blockData = uniData;
+    uniBlock.blockData = std::move(uniData);
     uniBlock.bufferID = bufferID;
 }
 
 void ProgramUniformBlockSetRequest::execute(Scene *scene,SceneRenderer *renderer,View *view)
 {
-    Program *prog = scene->getProgram(progID);
-    if (prog) {
+    if (Program *prog = scene->getProgram(progID))
+    {
         prog->setUniBlock(uniBlock);
     }
 }

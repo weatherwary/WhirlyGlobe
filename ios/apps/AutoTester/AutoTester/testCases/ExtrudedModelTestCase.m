@@ -3,12 +3,11 @@
 //  AutoTester
 //
 //  Created by Steve Gifford on 3/10/16.
-//  Copyright © 2016-2017 mousebird consulting.
+//  Copyright 2016-2022 mousebird consulting.
 //
 
-#import <WhirlyGlobeComponent.h>
 #import "ExtrudedModelTestCase.h"
-#import "AutoTester-Swift.h"
+#import "SwiftBridge.h"
 
 static const float EarthRadius = 6371000;
 

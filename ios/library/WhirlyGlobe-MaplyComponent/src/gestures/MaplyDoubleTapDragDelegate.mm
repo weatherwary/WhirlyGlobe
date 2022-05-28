@@ -1,9 +1,7 @@
-/*
- *  MaplyDoubleTapDragDelegate.mm
- *
+/*  MaplyDoubleTapDragDelegate.mm
  *
  *  Created by Steve Gifford on 2/7/14.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,13 +13,13 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- *
  */
 
 #import <Foundation/Foundation.h>
 #import "gestures/MaplyZoomGestureDelegate.h"
-#import "MaplyZoomGestureDelegate_private.h"
+#import "private/MaplyZoomGestureDelegate_private.h"
 #import "gestures/MaplyDoubleTapDragDelegate.h"
+#import "private/MaplyDoubleTapDragDelegate_private.h"
 #import "MaplyAnimateTranslation.h"
 #import "ViewWrapper.h"
 
@@ -86,7 +84,7 @@ using namespace Maply;
                 Point3d newCenter;
                 // Check if we're still within bounds
                 
-                if (MaplyGestureWithinBounds(bounds,newLoc,sceneRenderer,&testMapView,&newCenter))
+                if (MaplyGestureWithinBounds([self getBounds],newLoc,sceneRenderer,&testMapView,&newCenter))
                 {
                     newLoc = newCenter;
                     self.mapView->setLoc(newLoc);

@@ -1,9 +1,8 @@
-/*
- *  TapDelegate.h
+/*  GlobeTapDelegate.h
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 2/3/11.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -19,16 +18,11 @@
  */
 
 #import <UIKit/UIKit.h>
-#import "GlobeView_iOS.h"
-#import "GlobeTapMessage.h"
 
 /** WhirlyGlobe tap gesture delegate
 	responds to taps by blasting out a notification.
  */
 @interface WhirlyGlobeTapDelegate : NSObject <UIGestureRecognizerDelegate>
-
-/// Create a tap gesture recognizer and a delegate and wire them up to the given UIView
-+ (WhirlyGlobeTapDelegate *)tapDelegateForView:(UIView *)view globeView:(WhirlyGlobe::GlobeView_iOS *)globeView;
 
 @property (nonatomic,weak) UIGestureRecognizer *gestureRecognizer;
 

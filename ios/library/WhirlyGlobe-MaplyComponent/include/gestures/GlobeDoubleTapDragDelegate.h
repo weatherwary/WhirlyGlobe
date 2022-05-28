@@ -1,9 +1,7 @@
-/*
- *  GlobeDoubleTapDragDelegate.h
- *
+/*  GlobeDoubleTapDragDelegate.h
  *
  *  Created by Steve Gifford on 2/7/14.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,12 +13,10 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- *
  */
 
 #import <Foundation/Foundation.h>
-#import "GlobeView.h"
-#import "gestures/GlobePinchDelegate.h"
+#import <WhirlyGlobe/GlobePinchDelegate.h>
 
 // Sent out when the double tap delegate takes control
 #define kGlobeDoubleTapDragDidStart @"WKGlobeDoubleTapDragStarted"
@@ -29,15 +25,9 @@
 
 @interface WhirlyGlobeDoubleTapDragDelegate : NSObject<UIGestureRecognizerDelegate>
 
-/// Create a double tap gesture and a delegate and wire them up to the given UIView
-+ (WhirlyGlobeDoubleTapDragDelegate *)doubleTapDragDelegateForView:(UIView *)view globeView:(WhirlyGlobe::GlobeView_iOS *)globeView;
-
 @property (nonatomic,weak) UIGestureRecognizer *gestureRecognizer;
 
 /// Zoom limits
 @property (nonatomic) float minZoom,maxZoom;
-
-// If set, we calculate the tilt every time we update
-@property (nonatomic) WhirlyGlobe::TiltCalculatorRef tiltDelegate;
 
 @end

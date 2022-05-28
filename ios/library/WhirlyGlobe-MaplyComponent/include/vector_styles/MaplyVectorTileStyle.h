@@ -2,7 +2,7 @@
  *  WhirlyGlobe-MaplyComponent
  *
  *  Created by Steve Gifford on 1/3/14.
- *  Copyright 2011-2021 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
  */
 
 #import <UIKit/UIKit.h>
-#import "vector_styles/MaplyVectorStyle.h"
+#import <WhirlyGlobe/MaplyVectorStyle.h>
 
 /** The Maply Vector Tile Style is an internal representation of the style JSON coming out
     of a Maply Vector Tile database.

@@ -2,7 +2,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 6/2/14.
- *  Copyright 2011-2021 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 #import "View_jni.h"
 #import "Renderer_jni.h"
 #import "com_mousebird_maply_LayoutManager.h"
-#import "WhirlyGlobe.h"
+#import "WhirlyGlobeLib.h"
 #import <Exceptions_jni.h>
 
 using namespace WhirlyKit;

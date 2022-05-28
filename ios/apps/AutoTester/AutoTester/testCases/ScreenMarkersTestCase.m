@@ -3,15 +3,11 @@
 //  AutoTester
 //
 //  Created by Steve Gifford on 6/16/16.
-//  Copyright © 2016-2017 mousebird consulting.
+//  Copyright 2016-2022 mousebird consulting.
 //
 
 #import "ScreenMarkersTestCase.h"
-#import "MaplyBaseViewController.h"
-#import "MaplyMarker.h"
 #import "VectorsTestCase.h"
-#import "WhirlyGlobeViewController.h"
-#import "MaplyViewController.h"
 
 @implementation ScreenMarkersTestCase
 {

@@ -3,13 +3,13 @@
 //  SLDTest
 //
 //  Created by Ranen Ghosh on 2016-08-12.
-//  Copyright © 2016-2019 mousebird consulting.
+//  Copyright 2016-2019 mousebird consulting.
 //
 
 #import <Foundation/Foundation.h>
 @class DDXMLNode;
 @class DDXMLElement;
-#import "vector_styles/MaplyVectorTileStyle.h"
+#import <WhirlyGlobe/MaplyVectorTileStyle.h>
 
 /** @brief Base class for Symbolizer elements
  @see http://schemas.opengis.net/se/1.1.0/Symbolizer.xsd for SLD v1.1.0

@@ -3,7 +3,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 4/10/19.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -18,10 +18,10 @@
  *
  */
 
-#import "vector_styles/MaplyVectorTileStyle.h"
-#import "loading/MaplyTileSourceNew.h"
-#import "math/MaplyCoordinate.h"
-#import "vector_styles/MaplyVectorStyle.h"
+#import <WhirlyGlobe/MaplyVectorTileStyle.h>
+#import <WhirlyGlobe/MaplyTileSourceNew.h>
+#import <WhirlyGlobe/MaplyCoordinate.h>
+#import <WhirlyGlobe/MaplyVectorStyle.h>
 
 typedef NS_ENUM(NSInteger,MapboxGeometryType)
 {

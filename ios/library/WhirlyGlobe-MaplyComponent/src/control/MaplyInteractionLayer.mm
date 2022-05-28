@@ -1,9 +1,8 @@
-/*
- *  MaplyInteractionLayer_private.h
+/*  MaplyInteractionLayer_private.h
  *  WhirlyGlobeComponent
  *
  *  Created by Steve Gifford on 7/21/12.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,7 +14,6 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- *
  */
 
 #import "MaplyInteractionLayer_private.h"
@@ -26,6 +24,7 @@
 #import "MaplyVectorObject_private.h"
 #import "math/MaplyCoordinate.h"
 #import "ImageTexture_private.h"
+#import "private/MaplyTapMessage_private.h"
 #import <vector>
 
 using namespace Eigen;
@@ -68,22 +67,14 @@ using namespace WhirlyGlobe;
 
 // Do the logic for a selection
 // Runs in the layer thread
-- (void) userDidTapLayerThread:(MaplyTapMessage *)msg
+- (void)userDidTapLayerThread:(MaplyTapMessage *)msg
 {
     // First, we'll look for labels and markers
     NSMutableArray *retSelectArr = [self selectMultipleLabelsAndMarkersForScreenPoint:msg.touchLoc];
     
     // Next, try the vectors
     NSArray *vecObjs = [self findVectorsInPoint:Point2f(msg.whereGeo.x(),msg.whereGeo.y()) inView:(MaplyBaseViewController*)self.viewController multi:true];
-    for (MaplyVectorObject *vecObj in vecObjs)
-    {
-        MaplySelectedObject *selObj = [[MaplySelectedObject alloc] init];
-        selObj.selectedObj = vecObj;
-        selObj.screenDist = 0.0;
-        // Note: Not quite right
-        selObj.zDist = 0.0;
-        [retSelectArr addObject:selObj];
-    }
+    [retSelectArr addObjectsFromArray:[self convertSelectedVecObjects:vecObjs]];
     
     // Tell the view controller about it
     dispatch_async(dispatch_get_main_queue(),^
@@ -93,42 +84,20 @@ using namespace WhirlyGlobe;
                    );
 }
 
+// Check for a selection
+- (void)userDidTap:(MaplyTapMessage *)msg
+{
+    // Pass it off to the layer thread
+    [self performSelector:@selector(userDidTapLayerThread:) onThread:layerThread withObject:msg waitUntilDone:NO];
+}
+
 - (NSMutableArray*)selectMultipleLabelsAndMarkersForScreenPoint:(CGPoint)screenPoint
 {
     SelectionManagerRef selectManager = std::dynamic_pointer_cast<SelectionManager>(scene->getManager(kWKSelectionManager));
     std::vector<SelectionManager::SelectedObject> selectedObjs;
     selectManager->pickObjects(Point2f(screenPoint.x,screenPoint.y),10.0,mapView->makeViewState(layerThread.renderer),selectedObjs);
-    
-    NSMutableArray *retSelectArr = [NSMutableArray array];
-    if (!selectedObjs.empty())
-    {
-        // Work through the objects the manager found, creating entries for each
-        for (unsigned int ii=0;ii<selectedObjs.size();ii++)
-        {
-            SelectionManager::SelectedObject &theSelObj = selectedObjs[ii];
-            for (auto selectID : theSelObj.selectIDs)
-            {
-                MaplySelectedObject *selObj = [[MaplySelectedObject alloc] init];
-                selObj.selectedObj = compManager->getSelectObject(selectID);
-                
-                selObj.screenDist = theSelObj.screenDist;
-                selObj.cluster = theSelObj.isCluster;
-                selObj.zDist = theSelObj.distIn3D;
-                
-                if (selObj.selectedObj)
-                    [retSelectArr addObject:selObj];
-            }
-        }
-    }
-    
-    return retSelectArr;
-}
 
-// Check for a selection
-- (void) userDidTap:(MaplyTapMessage *)msg
-{
-    // Pass it off to the layer thread
-    [self performSelector:@selector(userDidTapLayerThread:) onThread:layerThread withObject:msg waitUntilDone:NO];
+    return [self convertSelectedObjects:selectedObjs];
 }
 
 @end

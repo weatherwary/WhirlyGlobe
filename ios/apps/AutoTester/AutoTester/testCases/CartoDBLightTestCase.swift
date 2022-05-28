@@ -3,10 +3,11 @@
 //  AutoTester
 //
 //  Created by Stephen Gifford on 3/27/18.
-//  Copyright © 2018 mousebird consulting.
+//  Copyright 2018-2022 mousebird consulting.
 //
 
 import UIKit
+import WhirlyGlobe
 
 class CartoDBLightTestCase: MaplyTestCase {
     

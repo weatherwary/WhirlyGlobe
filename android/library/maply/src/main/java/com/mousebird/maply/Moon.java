@@ -3,7 +3,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by jmnavarro
- *  Copyright 2011-2016 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@ public class Moon {
     /**
      * @return the location above the globe in lon/lat/distance.  Yay geocentric!
      */
-    public Point3d asPosition() {
+    public Point3d getPosition() {
         double[] pos = this.getPositionOfMoon();
         return new Point3d(pos[0], pos[1], 5.0);
     }

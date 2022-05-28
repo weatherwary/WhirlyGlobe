@@ -3,14 +3,11 @@
 //  AutoTester
 //
 //  Created by jmnavarro on 2/11/15.
-//  Copyright © 2015-2017 mousebird consulting.
+//  Copyright 2015-2022 mousebird consulting.
 //
 
 #import "MegaMarkersTestCase.h"
-#import "MaplyBaseViewController.h"
 #import "VectorsTestCase.h"
-#import "WhirlyGlobeViewController.h"
-#import "MaplyViewController.h"
 
 @implementation MegaMarkersTestCase
 

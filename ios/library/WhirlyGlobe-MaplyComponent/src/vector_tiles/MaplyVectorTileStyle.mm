@@ -2,7 +2,7 @@
  *  WhirlyGlobe-MaplyComponent
  *
  *  Created by Steve Gifford on 1/3/14.
- *  Copyright 2011-2021 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 #import "vector_styles/MaplyVectorTileMarkerStyle.h"
 #import "vector_styles/MaplyVectorTilePolygonStyle.h"
 #import "vector_styles/MaplyVectorTileTextStyle.h"
-#import "WhirlyGlobe.h"
+#import "WhirlyGlobeLib.h"
 #import "control/MaplyBaseViewController.h"
 
 using namespace WhirlyKit;

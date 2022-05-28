@@ -2,7 +2,7 @@
  *  MaplyQuadImageLoader_private.h
  *
  *  Created by Steve Gifford on 2/12/19.
- *  Copyright 2012-2019 mousebird consulting inc
+ *  Copyright 2012-2022 mousebird consulting inc
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -53,6 +53,9 @@
 
 // We delay setup by a tick so the user can mess with settings
 - (bool)delayedInit;
+
+// Call after subclass is successfully delayed-initialized
+- (bool)postDelayedInit;
 
 // Change the tile source to a new one (if they match)
 - (void)changeTileInfos:(NSArray<NSObject<MaplyTileInfoNew> *> * __nullable)tileInfos;

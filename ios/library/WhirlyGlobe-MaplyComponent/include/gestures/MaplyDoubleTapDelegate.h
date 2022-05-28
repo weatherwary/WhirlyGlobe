@@ -1,9 +1,7 @@
-/*
- *  MaplyDoubleTapDelegate.mm
- *
+/*  MaplyDoubleTapDelegate.h
  *
  *  Created by Jesse Crocker on 2/3/14.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,17 +13,11 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- *
  */
 
-#import <Foundation/Foundation.h>
-#import "MapView_iOS.h"
-#import "gestures/MaplyZoomGestureDelegate.h"
+#import <WhirlyGlobe/MaplyZoomGestureDelegate.h>
 
 @interface MaplyDoubleTapDelegate : MaplyZoomGestureDelegate
-
-/// Create a double tap gesture and a delegate and wire them up to the given UIView
-+ (MaplyDoubleTapDelegate *)doubleTapDelegateForView:(UIView *)view mapView:(Maply::MapView_iOSRef)mapView;
 
 /// How long we animate from starting to end point
 @property (nonatomic) float animTime;

@@ -2,7 +2,7 @@
  *  WhirlyGlobe-MaplyComponent
  *
  *  Created by Steve Gifford on 6/4/15.
- *  Copyright 2011-2021 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -130,7 +130,7 @@ typedef struct
         [partSys addTexture:starTex];
     [partSys addAttribute:@"a_position" type:MaplyShaderAttrTypeFloat3];
     [partSys addAttribute:@"a_size" type:MaplyShaderAttrTypeFloat];
-    partSysObj = [inViewC addParticleSystem:partSys desc:desc mode:mode];
+    //partSysObj = [inViewC addParticleSystem:partSys desc:desc mode:mode];
 
     // Data arrays for particles
     // We'll clear them out in case we don't fill them out completely

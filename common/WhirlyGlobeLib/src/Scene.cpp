@@ -2,7 +2,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 1/3/11.
- *  Copyright 2011-2021 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -37,6 +37,10 @@
 #import "BillboardManager.h"
 #import "GeometryManager.h"
 #import "ComponentManager.h"
+
+#if __clang_major__ >= 3
+#include <cxxabi.h>
+#endif
 
 namespace WhirlyKit
 {
@@ -143,32 +147,71 @@ Scene::~Scene()
     {
         manager.second->setScene(nullptr);
     }
+
+#if DEBUG
+    std::vector<std::weak_ptr<SceneManager>> wm(managers.size());
+    std::transform(managers.begin(), managers.end(), wm.begin(), [](auto p){ return p.second; });
+#endif
     managers.clear();
-    
-    auto theChangeRequests = changeRequests;
-    changeRequests.clear();
-    for (auto & theChangeRequest : theChangeRequests)
+
+#if DEBUG
+    wm.erase(std::remove_if(wm.begin(), wm.end(), [](auto p){ return !p.lock(); }), wm.end());
+    for (const auto &w : wm)
     {
-        // Note: Tear down change requests?
+        if (const auto p = w.lock())
+        {
+            const auto &ref = *p;
+            const auto name = typeid(ref).name();
+            int32_t status = 0;
+            size_t len = 256;
+            std::vector<char> buf(len + 1);
+#if __clang_major__ >= 3
+            abi::__cxa_demangle(name, &buf[0], &len, &status);
+#endif
+            wkLogLevel(Warn, "Scene Manager live after scene destroyed: '%s' (%s)", &buf[0], name);
+        }
+    }
+#endif
+
+    auto theChangeRequests = std::move(changeRequests);
+    for (auto *theChangeRequest : theChangeRequests)
+    {
         delete theChangeRequest;
     }
-    
+    theChangeRequests.clear();
+
+    for (auto *theChangeRequest : timedChangeRequests)
+    {
+        delete theChangeRequest;
+    }
+    timedChangeRequests.clear();
+
     activeModels.clear();
     
     subTextureMap.clear();
 
     programs.clear();
-    
-    fontTextureManager = nullptr;
+
+    if (fontTextureManager)
+    {
+        ChangeSet changes;
+        fontTextureManager->clear(changes);
+        discardChanges(changes);
+        fontTextureManager.reset();
+    }
 }
 
-void Scene::teardown(PlatformThreadInfo*)
+void Scene::teardown(PlatformThreadInfo* env)
 {
     {
         std::lock_guard<std::mutex> guardLock(managerLock);
         for (auto &manager : managers)
         {
             manager.second->teardown();
+        }
+        if (fontTextureManager)
+        {
+            fontTextureManager->teardown(env);
         }
     }
     setRenderer(nullptr);
@@ -186,17 +229,16 @@ void Scene::setDisplayAdapter(CoordSystemDisplayAdapter *newCoordAdapter)
 }
     
 // Add change requests to our list
-void Scene::addChangeRequests(const ChangeSet &newChanges)
+void Scene::addChangeRequests(ChangeSet &newChanges)
 {
     std::lock_guard<std::mutex> guardLock(changeRequestLock);
-    
-    for (ChangeRequest *change : newChanges)
-    {
+    for (ChangeRequest *change : newChanges) {
         if (change && change->when > 0.0)
             timedChangeRequests.insert(change);
         else
             changeRequests.push_back(change);
     }
+    newChanges.clear();
 }
 
 // Add a single change request
@@ -239,18 +281,20 @@ void Scene::addLocalMbr(const Mbr &localMbr)
     }
 }
 
-void Scene::setRenderer(SceneRenderer *renderer)
+void Scene::setRenderer(SceneRenderer *inRenderer)
 {
-    if (renderer)
+    if (inRenderer)
     {
-        setupInfo = renderer->getRenderSetupInfo();
+        setupInfo = inRenderer->getRenderSetupInfo();
     }
 
     std::lock_guard<std::mutex> guardLock(managerLock);
 
+    renderer = inRenderer;
+
     for (const auto &kvp : managers)
     {
-        kvp.second->setRenderer(renderer);
+        kvp.second->setRenderer(inRenderer);
     }
 }
     
@@ -359,56 +403,78 @@ int Scene::preProcessChanges(WhirlyKit::View *view,SceneRenderer *renderer,__unu
     {
         std::lock_guard<std::mutex> guardLock(changeRequestLock);
         // Just doing the ones that require a pre-process
-        for (auto &changeRequest : changeRequests)
+        for (auto &req : changeRequests)
         {
-            ChangeRequest *req = changeRequest;
-            if (req && req->needPreExecute()) {
+            if (req && req->needPreExecute())
+            {
                 preRequests.push_back(req);
-                changeRequest = nullptr;
+                req = nullptr;
             }
         }
     }
 
     // Run these outside of the lock, since they might use the lock
-    for (auto req : preRequests) {
+    for (auto &req : preRequests)
+    {
         req->execute(this,renderer,view);
         delete req;
+        req = nullptr;
     }
     
-    return preRequests.size();
+    const auto processed = (int)preRequests.size();
+    preRequests.clear();
+    return processed;
 }
 
 // Process outstanding changes.
 // We'll grab the lock and we're only expecting to be called in the rendering thread
 int Scene::processChanges(WhirlyKit::View *view,SceneRenderer *renderer,TimeInterval now)
 {
-    std::lock_guard<std::mutex> guardLock(changeRequestLock);
-    // See if any of the timed changes are ready
-    std::vector<ChangeRequest *> toMove;
-    for (ChangeRequest *req : timedChangeRequests)
+    // Set up a local collection of approximately the same capacity before locking
+    decltype(changeRequests) localChanges;
+    localChanges.reserve(changeRequests.capacity());
+
     {
-        if (now >= req->when)
-            toMove.push_back(req);
-        else
-            break;
+        std::lock_guard<std::mutex> guardLock(changeRequestLock);
+
+        // See if any of the timed changes are ready
+        if (!timedChangeRequests.empty())
+        {
+            // Establish the range of changes to be moved
+            const auto beg = timedChangeRequests.begin();
+            auto end = beg;
+            while (end != timedChangeRequests.end() && (*end)->when <= now)
+            {
+                ++end;
+            }
+
+            // Move them
+            if (end != beg)
+            {
+                changeRequests.insert(changeRequests.end(),
+                                      std::make_move_iterator(beg),
+                                      std::make_move_iterator(end));
+                timedChangeRequests.erase(beg, end);
+            }
+        }
+
+        // Move the outstanding changes to the local collection and release the lock
+        localChanges.swap(changeRequests);
     }
-    for (ChangeRequest *req : toMove)
+
+    for (auto &req : localChanges)
     {
-        timedChangeRequests.erase(req);
-        changeRequests.push_back(req);
-    }
-    
-    for (auto req : changeRequests)
-    {
-        if (req) {
+        if (req)
+        {
             req->execute(this,renderer,view);
             delete req;
+            req = nullptr;
         }
     }
-    int numChanges = changeRequests.size();
-    changeRequests.clear();
-    
-    return numChanges;
+
+    const auto processed = (int)localChanges.size();
+    localChanges.clear();
+    return processed;
 }
     
 bool Scene::hasChanges(TimeInterval now) const
@@ -614,9 +680,11 @@ int Scene::retainZoomSlot()
 
 void Scene::releaseZoomSlot(int zoomSlot)
 {
-    std::lock_guard<std::mutex> guardLock(zoomSlotLock);
-
-    zoomSlots[zoomSlot] = MAXFLOAT;
+    if (0 <= zoomSlot && zoomSlot < MaplyMaxZoomSlots)
+    {
+        std::lock_guard<std::mutex> guardLock(zoomSlotLock);
+        zoomSlots[zoomSlot] = MAXFLOAT;
+    }
 }
 
 void Scene::setZoomSlotValue(int zoomSlot,float zoom)
@@ -687,9 +755,9 @@ void RemTextureReq::execute(Scene *scene,SceneRenderer *renderer,WhirlyKit::View
     TextureBaseRef tex = scene->getTexture(texture);
     if (tex)
     {
-        if (renderer->teardownInfo)
+        if (auto info = renderer->getTeardownInfo())
         {
-            renderer->teardownInfo->destroyTexture(renderer,tex);
+            info->destroyTexture(renderer,tex);
         }
         scene->removeTexture(texture);
     } else
@@ -766,10 +834,9 @@ RemDrawableReq::RemDrawableReq(SimpleIdentity drawId,TimeInterval inWhen)
 
 void RemDrawableReq::execute(Scene *scene,SceneRenderer *renderer,WhirlyKit::View *view)
 {
-    DrawableRef draw = scene->getDrawable(drawID);
-    if (draw)
+    if (DrawableRef draw = scene->getDrawable(drawID))
     {
-        renderer->removeDrawable(draw, true, renderer->teardownInfo);
+        renderer->removeDrawable(draw, true, renderer->getTeardownInfo());
         scene->remDrawable(draw);
     }
     else
@@ -786,7 +853,7 @@ void AddProgramReq::execute(Scene *scene,SceneRenderer *renderer,WhirlyKit::View
 
 void RemProgramReq::execute(Scene *scene,SceneRenderer *renderer,WhirlyKit::View *view)
 {
-    scene->removeProgram(programId,renderer->teardownInfo);
+    scene->removeProgram(programId,renderer->getTeardownInfo());
 }
     
 RunBlockReq::RunBlockReq(BlockFunc newFunc) : func(std::move(newFunc))

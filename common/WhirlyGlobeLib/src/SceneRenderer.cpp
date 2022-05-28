@@ -2,7 +2,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 1/13/11.
- *  Copyright 2011-2021 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
  */
 
 #import "SceneRenderer.h"
+#import "WhirlyKitLog.h"
 
 using namespace Eigen;
 
@@ -25,16 +26,9 @@ namespace WhirlyKit
     
 // Compare two matrices float by float
 // The default comparison seems to have an epsilon and the cwise version isn't getting picked up
-bool matrixAisSameAsB(Matrix4d &a,Matrix4d &b)
+static bool matrixAisSameAsB(const Matrix4d &a,const Matrix4d &b)
 {
-    double *floatsA = a.data();
-    double *floatsB = b.data();
-    
-    for (unsigned int ii=0;ii<16;ii++)
-        if (floatsA[ii] != floatsB[ii])
-            return false;
-    
-    return true;
+    return !memcmp(a.data(), b.data(), 16 * sizeof(Matrix4d::Scalar));
 }
 
 WorkGroup::~WorkGroup()
@@ -48,10 +42,11 @@ WorkGroup::~WorkGroup()
     }
 }
 
-RenderTargetContainer::RenderTargetContainer(RenderTargetRef renderTarget)
-: renderTarget(renderTarget), modified(true)
+RenderTargetContainer::RenderTargetContainer(RenderTargetRef renderTarget) :
+    renderTarget(renderTarget),
+    modified(true)
 {
-    
+
 }
 
 bool WorkGroup::addDrawable(DrawableRef drawable)
@@ -151,11 +146,17 @@ Scene *SceneRenderer::getScene()
 View *SceneRenderer::getView()
     { return theView; }
 
-float SceneRenderer::getScale()
+float SceneRenderer::getScale() const
     { return scale; }
 
 void SceneRenderer::setScale(float newScale)
     { scale = newScale; }
+
+void SceneRenderer::setFramebufferSize(float width, float height)
+{
+    framebufferWidth = width;
+    framebufferHeight = height;
+}
 
 void SceneRenderer::setZBufferMode(WhirlyKitSceneRendererZBufferMode inZBufferMode)
     { zBufferMode = inZBufferMode; }
@@ -171,9 +172,9 @@ void SceneRenderer::setView(View *newView)
     
 void SceneRenderer::addRenderTarget(RenderTargetRef newTarget)
 {
-    auto workGroup = workGroups[WorkGroup::Offscreen];
+    const auto &workGroup = workGroups[WorkGroup::Offscreen];
     workGroup->renderTargetContainers.push_back(workGroup->makeRenderTargetContainer(newTarget));
-    renderTargets.insert(renderTargets.begin(),newTarget);
+    renderTargets.insert(renderTargets.begin(),std::move(newTarget));
 }
 
 void SceneRenderer::addDrawable(DrawableRef newDrawable)
@@ -289,21 +290,78 @@ void SceneRenderer::removeRenderTarget(SimpleIdentity targetID)
 }
 
 void SceneRenderer::defaultTargetInit(RenderTarget *)
-    { }
+{ }
 
 void SceneRenderer::presentRender()
-    { }
+{ }
 
-Point2f SceneRenderer::getFramebufferSize()
+int SceneRenderer::retainZoomSlot(double minZoom, double maxHeight, double maxZoom, double minHeight)
+{
+    const int slot = scene ? scene->retainZoomSlot() : -1;
+    if (slot >= 0)
+    {
+        zoomSlotMap.insert(std::make_pair(slot, ZoomSlotInfo{
+            .minZoom = minZoom,
+            .maxZoom = maxZoom,
+            .minHeight = minHeight,
+            .maxHeight = maxHeight,
+        }));
+    }
+    return slot;
+}
+
+void SceneRenderer::updateZoomSlots()
+{
+    // Compute dynamic zoom slots
+    if (theView && scene)
+    {
+        const auto h = theView->heightAboveSurface();
+        for (const auto &kvp : zoomSlotMap)
+        {
+            scene->setZoomSlotValue(kvp.first, (float)kvp.second.zoom(h));
+        }
+    }
+}
+
+void SceneRenderer::releaseZoomSlot(int slot)
+{
+    if (scene)
+    {
+        zoomSlotMap.erase(slot);
+        scene->releaseZoomSlot(slot);
+    }
+}
+
+double SceneRenderer::ZoomSlotInfo::zoom(double height) const
+{
+    const auto dH = log(maxHeight) - log(minHeight);
+    const auto nH = log(std::max(height,1e-8)) - log(minHeight);
+    const auto z = minZoom + (maxZoom - minZoom) * (1.0 - ((dH != 0) ? nH/dH : 0));
+    return std::max(0.0, z);
+}
+
+Point2f SceneRenderer::getFramebufferSize() const
 {
     return Point2f(framebufferWidth,framebufferHeight);
 }
 
-Point2f SceneRenderer::getFramebufferSizeScaled()
+Mbr SceneRenderer::getFramebufferBound(float margin) const
 {
-    return Point2f(framebufferWidth/scale,framebufferHeight/scale);
+    const Point2f size = getFramebufferSize();
+    return { size * -margin, size * (1.0f + margin) };
 }
-    
+
+Point2f SceneRenderer::getFramebufferSizeScaled() const
+{
+    return Point2f(framebufferWidth,framebufferHeight) / ((scale != 0) ? scale : 1.0f);
+}
+
+Mbr SceneRenderer::getFramebufferBoundScaled(float margin) const
+{
+    const Point2f size = getFramebufferSizeScaled();
+    return { size * -margin, size * (1.0f + margin) };
+}
+
 void SceneRenderer::setRenderUntil(TimeInterval newRenderUntil)
 {
     renderUntil = std::max(renderUntil,newRenderUntil);
@@ -357,7 +415,7 @@ void SceneRenderer::setScene(WhirlyKit::Scene *newScene)
     }
 }
 
-RGBAColor SceneRenderer::getClearColor()
+RGBAColor SceneRenderer::getClearColor() const
 {
     return clearColor;
 }

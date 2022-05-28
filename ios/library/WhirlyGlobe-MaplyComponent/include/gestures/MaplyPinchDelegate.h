@@ -2,7 +2,7 @@
  *  WhirlyGlobeLib
  *
  *  Created by Steve Gifford on 1/10/12.
- *  Copyright 2011-2021 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -16,12 +16,8 @@
  *  limitations under the License.
  */
 
-#import <Foundation/Foundation.h>
-#import "gestures/MaplyZoomGestureDelegate.h"
+#import <WhirlyGlobe/MaplyZoomGestureDelegate.h>
 
 @interface MaplyPinchDelegate : MaplyZoomGestureDelegate
-
-/// Create a pinch gesture and a delegate and wire them up to the given UIView
-+ (MaplyPinchDelegate *)pinchDelegateForView:(UIView *)view mapView:(Maply::MapView_iOSRef)mapView;
 
 @end

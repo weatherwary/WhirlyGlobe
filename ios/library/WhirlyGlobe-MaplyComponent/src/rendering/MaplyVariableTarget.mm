@@ -3,7 +3,7 @@
  *  WhirlyGlobe-MaplyComponent
  *
  *  Created by Steve Gifford on 9/18/18.
- *  Copyright 2011-2019 mousebird consulting
+ *  Copyright 2011-2022 mousebird consulting
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -85,11 +85,7 @@
         else
             NSLog(@"Failed to add auxiliary render target in setupRectangle for MaplyVariableTarget.");
     }
-    NSString *shaderName = nil;
-    if (_shader)
-        shaderName = [_shader name];
-    else
-        shaderName = kMaplyShaderDefaultTriNoLighting;
+    const NSString * const shaderName = _shader ? [_shader name] : kMaplyShaderDefaultTriNoLighting;
     _rectObj = [theViewC addShapes:@[rect]
                           desc:@{kMaplyColor: _color,
                                  kMaplyDrawPriority: @(_drawPriority),
