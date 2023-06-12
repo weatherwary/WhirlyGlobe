@@ -556,12 +556,11 @@ static UIFont *findFont(const std::string &fontName, float fontSize)
     {
         return font;
     }
- NSString *fontNameStr = [NSString stringWithFormat:@"%s",fontName.c_str()];
       if ([fontNameStr hasPrefix:@"style:"]) {
         fontNameStr = [fontNameStr substringFromIndex:6];
         for (const auto& textStyle : textStyles) {
           if ([fontNameStr isEqual:textStyle]) {
-            font = [UIFont preferredFontForTextStyle:textStyle];
+            UIFont *font = [UIFont preferredFontForTextStyle:textStyle];
             return font;
           }
         }
@@ -570,75 +569,71 @@ static UIFont *findFont(const std::string &fontName, float fontSize)
     // The font names vary a bit on iOS so we'll try reformatting the name
     NSArray<NSString *> *components = [fontNameStr componentsSeparatedByString:@" "];
     NSString *fontNameStr2 = nil;
-    switch (components.count)
-    {
-        // One component should already have worked
-        case 1:
-            return nil;
-        // For two, try switching the separator
-        case 2:
-            fontNameStr2 = [fontNameStr stringByReplacingOccurrencesOfString:@" " withString:@"-"];
-            return [UIFont fontWithName:fontNameStr2 size:fontSize];
-            break;
+  switch (components.count)
+      {
+          // One component should already have worked
+          case 1:
+              return nil;
+          // For two, try switching the separator
+          case 2:
+              fontNameStr2 = [fontNameStr stringByReplacingOccurrencesOfString:@" " withString:@"-"];
+              return [UIFont fontWithName:fontNameStr2 size:fontSize];
+          case 3:
+              // Try <name><name>-<name>
+              fontNameStr2 = [NSString stringWithFormat:@"%@%@-%@",[components objectAtIndex:0],[components objectAtIndex:1],[components lastObject]];
+              if (UIFont* font = [UIFont fontWithName:fontNameStr2 size:fontSize])
+              {
+                  return font;
+              }
+              
+              // Sometimes a font like "Noto Sans Regular" is just "NotoSans" because I hate everyone involved with fonts
+              if ([[components lastObject] isEqualToString:@"Regular"])
+              {
+                  fontNameStr2 = [NSString stringWithFormat:@"%@%@",
+                                  [components objectAtIndex:0],
+                                  [components objectAtIndex:1]];
+                  if (UIFont* font = [UIFont fontWithName:fontNameStr2 size:fontSize])
+                  {
+                      return font;
+                  }
+              }
+              
+              // Okay, let's try a slightly different construction
+              fontNameStr2 = [NSString stringWithFormat:@"%@-%@%@",
+                              [components objectAtIndex:0],
+                              [components objectAtIndex:1],
+                              [components objectAtIndex:2]];
+              if (UIFont* font = [UIFont fontWithName:fontNameStr2 size:fontSize])
+              {
+                  return font;
+              }
+              
+              // And try an even stupider construction
+              fontNameStr2 = [NSString stringWithFormat:@"%@-%@_%@-%@",
+                              [components objectAtIndex:0],
+                              [components objectAtIndex:2],
+                              [components objectAtIndex:1],
+                              [components objectAtIndex:2]];
+              if (UIFont* font = [UIFont fontWithName:fontNameStr2 size:fontSize])
+              {
+                  return font;
+              }
+              break;
+          default:
+          {
+              // Try <name><name>-<name>
+              NSMutableString *str = [[NSMutableString alloc] init];
+              for (unsigned int ii=0;ii<[components count]-1;ii++)
+              {
+                  [str appendString:[components objectAtIndex:ii]];
+              }
+              [str appendFormat:@"-%@",[components lastObject]];
+              if (UIFont* font = [UIFont fontWithName:str size:fontSize])
+              {
+                  return font;
+              }
           }
-        case 3:
       }
-            // Try <name><name>-<name>
-            fontNameStr2 = [NSString stringWithFormat:@"%@%@-%@",[components objectAtIndex:0],[components objectAtIndex:1],[components lastObject]];
-      }
-            if (UIFont* font = [UIFont fontWithName:fontNameStr2 size:fontSize])
-            {
-                return font;
-            }
-            
-            // Sometimes a font like "Noto Sans Regular" is just "NotoSans" because I hate everyone involved with fonts
-            if ([[components lastObject] isEqualToString:@"Regular"])
-            {
-                fontNameStr2 = [NSString stringWithFormat:@"%@%@",
-                                [components objectAtIndex:0],
-                                [components objectAtIndex:1]];
-                if (UIFont* font = [UIFont fontWithName:fontNameStr2 size:fontSize])
-                {
-                    return font;
-                }
-            }
-            
-            // Okay, let's try a slightly different construction
-            fontNameStr2 = [NSString stringWithFormat:@"%@-%@%@",
-                            [components objectAtIndex:0],
-                            [components objectAtIndex:1],
-                            [components objectAtIndex:2]];
-            if (UIFont* font = [UIFont fontWithName:fontNameStr2 size:fontSize])
-            {
-                return font;
-            }
-            
-            // And try an even stupider construction
-            fontNameStr2 = [NSString stringWithFormat:@"%@-%@_%@-%@",
-                            [components objectAtIndex:0],
-                            [components objectAtIndex:2],
-                            [components objectAtIndex:1],
-                            [components objectAtIndex:2]];
-            if (UIFont* font = [UIFont fontWithName:fontNameStr2 size:fontSize])
-            {
-                return font;
-            }
-            break;
-        default:
-        {
-            // Try <name><name>-<name>
-            NSMutableString *str = [[NSMutableString alloc] init];
-            for (unsigned int ii=0;ii<[components count]-1;ii++)
-            {
-                [str appendString:[components objectAtIndex:ii]];
-            }
-            [str appendFormat:@"-%@",[components lastObject]];
-            if (UIFont* font = [UIFont fontWithName:str size:fontSize])
-            {
-                return font;
-            }
-        }
-    }
     return nil;
 }
 

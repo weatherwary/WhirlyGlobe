@@ -27,6 +27,7 @@
 #import "private/MaplyDoubleTapDelegate_private.h"
 #import "private/MaplyDoubleTapDragDelegate_private.h"
 #import "private/MaplyPanDelegate_private.h"
+#import "private/MaplyScrollDelegate_private.h"
 #import "private/MaplyPinchDelegate_private.h"
 #import "private/MaplyRotateDelegate_private.h"
 #import "private/MaplyTapDelegate_private.h"
@@ -400,7 +401,7 @@ struct MaplyViewControllerAnimationWrapper : public Maply::MapViewAnimationDeleg
     panDelegate = [MaplyPanDelegate panDelegateForView:wrapView mapView:mapView useCustomPanRecognizer:false];
     if (_scrollGesture)
     {
-        scrollDelegate = [MaplyScrollDelegate scrollDelegateForView:wrapView mapView:mapView];
+      scrollDelegate = [MaplyScrollDelegate scrollDelegateForView:wrapView mapView:mapView];
         scrollDelegate.minZoom = mapView->minHeightAboveSurface();
         scrollDelegate.maxZoom = mapView->maxHeightAboveSurface();
     }
@@ -609,7 +610,7 @@ struct MaplyViewControllerAnimationWrapper : public Maply::MapViewAnimationDeleg
     if (scrollGesture && !scrollDelegate)
     {
         // gesture enabled but no delegate is set, create one.
-        scrollDelegate = [MaplyScrollDelegate scrollDelegateForView:wrapView mapView:mapView];
+      scrollDelegate = [MaplyScrollDelegate scrollDelegateForView:wrapView mapView:mapView];
         scrollDelegate.minZoom = mapView->minHeightAboveSurface();
         scrollDelegate.maxZoom = mapView->maxHeightAboveSurface();
 

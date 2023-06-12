@@ -112,7 +112,6 @@ FOUNDATION_EXPORT const unsigned char WhirlyGlobeMaplyComponentVersionString[];
 #import <WhirlyGlobe/NSDictionary+StyleRules.h>
 #import <WhirlyGlobe/SLDExpressions.h>
 #import <WhirlyGlobe/SLDOperators.h>
-#import <WhirlyGlobe/SLDStyleSet.h>
 #import <WhirlyGlobe/SLDSymbolizers.h>
 #import <WhirlyGlobe/SLDWellKnownMarkers.h>
 #import <WhirlyGlobe/WGCoordinate.h>

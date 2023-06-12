@@ -24,14 +24,19 @@
 using namespace WhirlyKit;
 using namespace Maply;
 
-@implementation MaplyScrollDelegate
+@interface MaplyScrollDelegate()
 {
-    /// If we're zooming, where we started
-    bool zooming;
-    float startZ;
-    Point2f startingPoint;
-    Point3d startingGeoPoint;
+    MapView_iOSRef mapView;
+  bool zooming;
+  float startZ;
+    WhirlyKit::Point3d startingGeoPoint;
+    WhirlyKit::Point2f startingPoint;
+    /// Boundary quad that we're to stay within
+    Point2dVector bounds;
 }
+@end
+
+@implementation MaplyScrollDelegate
 
 + (MaplyScrollDelegate *)scrollDelegateForView:(UIView *)view mapView:(MapView_iOSRef)mapView
 {
@@ -39,7 +44,11 @@ using namespace Maply;
     UIPanGestureRecognizer *scrollRecognizer;
       scrollRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:scrollDelegate action:@selector(scrollAction:)];
     scrollRecognizer.delegate = scrollDelegate;
+  if (@available(iOS 13.4, *)) {
     scrollRecognizer.allowedScrollTypesMask = UIScrollTypeMaskAll;
+  } else {
+    // Fallback on earlier versions
+  }
     scrollRecognizer.minimumNumberOfTouches = 2;
     scrollDelegate.gestureRecognizer = scrollRecognizer;
   [view addGestureRecognizer:scrollRecognizer];
@@ -118,7 +127,8 @@ using namespace Maply;
                       self.mapView->setLoc(newCenter, true);
                   }
               }
-              [pan setTranslation:CGPointZero inView:pan.view];
+              //[pan setTranslation:CGPointZero inView:pan.view];
+              [pan setTranslation:CGPointZero inView:nil];
               startZ = newZ;
             }
         }

@@ -5,8 +5,11 @@ XFW=WhirlyGlobe.xcframework
 xcodebuild archive -scheme WhirlyGlobeMaplyComponent -configuration Release -destination 'generic/platform=iOS' -archivePath "./archives/$FW-iphoneos.xcarchive" SKIP_INSTALL=NO
 # builds iOS simulator slice
 xcodebuild archive -scheme WhirlyGlobeMaplyComponent -configuration Release -destination 'generic/platform=iOS Simulator' -archivePath "./archives/$FW-iphonesimulator.xcarchive" SKIP_INSTALL=NO
+# builds Mac Catalyst slice
+xcodebuild archive -scheme WhirlyGlobeMaplyComponent -configuration Release -destination 'generic/platform=macOS,variant=Mac Catalyst' -archivePath "./archives/$FW-maccatalyst.xcarchive" SKIP_INSTALL=NO
 # merges both into .xcframework
 rm -rf "$XFW"
 xcodebuild -create-xcframework -framework "./archives/$FW-iphonesimulator.xcarchive/Products/Library/Frameworks/$FW" \
                                -framework "./archives/$FW-iphoneos.xcarchive/Products/Library/Frameworks/$FW" \
+                               -framework "./archives/$FW-maccatalyst.xcarchive/Products/Library/Frameworks/$FW" \
                                -output "$XFW"

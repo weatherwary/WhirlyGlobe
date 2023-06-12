@@ -61,7 +61,6 @@
 #import <WhirlyGlobe/MapboxVectorTiles.h>
 #import <WhirlyGlobe/MapboxVectorInterpreter.h>
 
-#import <WhirlyGlobe/SLDStyleSet.h>
 #import <WhirlyGlobe/SLDExpressions.h>
 #import <WhirlyGlobe/SLDOperators.h>
 #import <WhirlyGlobe/SLDSymbolizers.h>
